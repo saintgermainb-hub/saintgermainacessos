@@ -93,6 +93,8 @@ tr.off td{color:var(--g3)}
 .hist small{color:var(--g3)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--preto);color:#fff;padding:11px 20px;border-radius:4px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
+.ic.girando svg{animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
 .bloqueio{text-align:center;padding:80px 20px;color:var(--g2)}
 .bloqueio b{display:block;color:var(--preto);font-weight:400;font-size:20px;letter-spacing:.12em;margin-bottom:8px}
 .bloqueio .btn{margin-top:20px;display:inline-block;text-decoration:none}
@@ -123,7 +125,7 @@ const API = 'https://script.google.com/macros/s/AKfycbwQPyL6HaJGebsEyQjYYmc6zqh4
 const SC_CENTER = 'https://saintgermainb-hub.github.io/saintcenter/';
 const EQUIPES = ['Equipe 01','Equipe 02'];
 
-const S = { token:'', eu:null, sistemas:[], posicoes:[], compart:[], hist:[], visiveis:{} };
+const S = { token:'', eu:null, sistemas:[], posicoes:[], compart:[], hist:[], visiveis:{}, cache:{}, carregando:'' };
 let aba='posicoes', busca='', filtroSetor='', filtroEquipe='';
 
 /* ===== Utilidades ===== */
@@ -190,9 +192,9 @@ function linhaAcesso(p, s){
   if(a.t==='senha'){
     if(!a.tem) val='<span class="na">Senha não cadastrada</span>';
     else{
-      const v = S.visiveis[chave];
-      val = `<span class="senha ${v!==undefined?'':'oculta'} ${pend?'pendente':''}">${v!==undefined?esc(v):'••••••••'}</span>`;
-      bts = `<button class="ic" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`;
+      const v = S.visiveis[chave], car = S.carregando===chave;
+      val = `<span class="senha ${v!==undefined?'':'oculta'} ${pend?'pendente':''}">${v!==undefined?esc(v):car?'buscando…':'••••••••'}</span>`;
+      bts = `<button class="ic ${car?'girando':''}" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`;
     }
   }else if(a.t==='google') val='<span class="via">Acesso pelo Google</span>';
   else if(a.t==='frete') val='<span class="via">Acesso pelo FreteBarato</span>';
@@ -258,19 +260,35 @@ async function renderHistorico(app){
   app.innerHTML = S.hist.length?`<div class="tabela"><table><thead><tr><th>QUANDO</th><th>QUEM</th><th>AÇÃO</th><th>ONDE</th></tr></thead><tbody>${S.hist.map(h=>`<tr><td>${esc(h.quando)}</td><td>${esc(h.quem)}</td><td>${esc(h.acao)}</td><td>${esc(h.alvo)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="vazio">Nenhuma ação registrada ainda.</div>';
 }
 
-/* ===== Senhas ===== */
+/* ===== Senhas =====
+   1º clique num card busca todas as senhas dele de uma vez; os próximos são instantâneos
+   e o histórico é gravado em segundo plano (sem esperar). */
+function alvoDe(tipo, id, sis){ if(tipo==='c'){ const c=S.compart.find(x=>x.id===id); return c?c.nome:''; } const p=S.posicoes.find(x=>x.id===id); return p ? p.setor+(p.equipe?' ('+p.equipe+')':'')+' · '+sis : sis; }
+let filaLog=[], timerLog=null;
+function logFundo(acao, alvo){ filaLog.push({acao, alvo}); clearTimeout(timerLog); timerLog=setTimeout(()=>{ const l=filaLog; filaLog=[]; call('registrarUso', S.token, l).catch(()=>{}); }, 600); }
+async function pegar(tipo, id, sis, acao){
+  const ck = tipo==='c' ? 'c|'+id : id;
+  if(S.cache[ck] && (tipo==='c' || S.cache[ck][sis]!==undefined)){ logFundo(acao, alvoDe(tipo,id,sis)); return tipo==='c' ? S.cache[ck] : S.cache[ck][sis]; }
+  const k = tipo==='c' ? 'c|'+id : id+'|'+sis;
+  S.carregando = k; render();
+  try{
+    if(tipo==='c') S.cache[ck] = await run('verSenha', 'c', id, '', acao==='copiar'?'copiar':'ver');
+    else S.cache[ck] = await run('senhasPosicao', id, sis, acao==='copiar'?'copiar':'ver');
+  }finally{ S.carregando=''; }
+  return tipo==='c' ? S.cache[ck] : (S.cache[ck][sis] ?? '');
+}
 async function mostrar(tipo, id, sis){
   const k = tipo==='c' ? 'c|'+id : id+'|'+sis;
   if(S.visiveis[k]!==undefined){ delete S.visiveis[k]; render(); return; }
-  try{ S.visiveis[k] = await run('verSenha', tipo, id, sis||'', 'ver'); render(); }catch(e){ toast(e.message); }
+  try{ S.visiveis[k] = await pegar(tipo, id, sis, 'ver'); }catch(e){ toast(e.message); }
+  render();
+}
+function copiarTexto(v){
+  return navigator.clipboard.writeText(v).catch(()=>{ const t=document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); });
 }
 async function copiar(tipo, id, sis){
-  try{
-    const v = await run('verSenha', tipo, id, sis||'', 'copiar');
-    try{ await navigator.clipboard.writeText(v); }
-    catch(_){ const t=document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    toast('Senha copiada');
-  }catch(e){ toast(e.message); }
+  try{ const v = await pegar(tipo, id, sis, 'copiar'); await copiarTexto(v); toast('Senha copiada'); }catch(e){ toast(e.message); }
+  render();
 }
 
 /* ===== Sistemas ===== */
@@ -335,7 +353,7 @@ async function gravarPos(p, logs){
   const r = await run('salvarPosicao', p, logs);
   const i = S.posicoes.findIndex(x=>x.id===r.id);
   if(i>=0) S.posicoes[i]=r; else S.posicoes.push(r);
-  Object.keys(S.visiveis).filter(k=>k.startsWith(r.id+'|')).forEach(k=>delete S.visiveis[k]);
+  Object.keys(S.visiveis).filter(k=>k.startsWith(r.id+'|')).forEach(k=>delete S.visiveis[k]); delete S.cache[r.id];
 }
 function editar(id){
   const p = id ? S.posicoes.find(x=>x.id===id) : {setor:'',equipe:'',resp:'',status:'ativo',email:'',acessos:{}};
@@ -402,7 +420,7 @@ function salvarC(id, btn){
   salvando(btn, async () => {
     const r = await run('salvarCompart', c, [{acao: id?(s?'Alterou senha':'Editou conta'):'Criou conta', alvo:c.nome}]);
     const i = S.compart.findIndex(x=>x.id===r.id); if(i>=0) S.compart[i]=r; else S.compart.push(r);
-    delete S.visiveis['c|'+r.id]; fechar(); render();
+    delete S.visiveis['c|'+r.id]; delete S.cache['c|'+r.id]; fechar(); render();
   });
 }
 
@@ -438,7 +456,7 @@ function importar(ev){
       <p>Encontrei <b>${pos.length}</b> posições e <b>${comp.length}</b> contas compartilhadas${novosSis.length?` e <b>${novosSis.length}</b> sistema(s) novo(s): ${esc(novosSis.join(', '))}`:''}.</p>
       ${S.posicoes.length||S.compart.length?'<p style="color:var(--g2)">Atenção: a importação substitui as posições e contas que já estão no sistema. Sua planilha original não é alterada.</p>':''}
     </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" id="btnImp">Importar</button></div>`);
-    $('btnImp').onclick = () => salvando($('btnImp'), async () => { const d = await run('importar', pos, comp, novosSis); aplicar(d); S.visiveis={}; fechar(); render(); toast(`Importado: ${pos.length} posições e ${comp.length} contas compartilhadas`); });
+    $('btnImp').onclick = () => salvando($('btnImp'), async () => { const d = await run('importar', pos, comp, novosSis); aplicar(d); S.visiveis={}; S.cache={}; fechar(); render(); toast(`Importado: ${pos.length} posições e ${comp.length} contas compartilhadas`); });
   };
   rd.readAsText(f, 'UTF-8');
 }
