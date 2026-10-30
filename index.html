@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acessos · Saint Germain</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Questrial&display=swap">
+<style>
+:root{--preto:#000;--branco:#fff;--g1:#414142;--g2:#5b5b60;--g3:#aea9b4;--linha:#e6e4e9;--fundo:#f7f7f8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Questrial',sans-serif;background:var(--fundo);color:var(--preto);font-size:14px}
+button,input,select{font-family:inherit;font-size:inherit}
+header{background:var(--preto);color:var(--branco);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+html.sc-dentro header{display:none}
+.marca{letter-spacing:.32em;font-size:13px}
+.marca b{font-weight:400;display:block;font-size:20px;letter-spacing:.18em;margin-top:2px}
+.quem{font-size:12px;color:var(--g3);letter-spacing:.06em}
+nav{background:var(--branco);border-bottom:1px solid var(--linha);display:flex;padding:0 28px;gap:4px;overflow-x:auto}
+nav button{background:none;border:0;padding:15px 16px;color:var(--g2);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.06em;white-space:nowrap}
+nav button.ativo{color:var(--preto);border-color:var(--preto)}
+main{padding:24px 28px;max-width:1300px;margin:0 auto}
+.barra{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.barra input,.barra select{border:1px solid var(--linha);background:#fff;padding:10px 12px;border-radius:4px;min-width:190px}
+.barra .esp{flex:1}
+.btn{background:var(--preto);color:#fff;border:0;padding:10px 16px;border-radius:4px;cursor:pointer;letter-spacing:.04em}
+.btn.sec{background:#fff;color:var(--preto);border:1px solid var(--preto)}
+.btn.min{padding:6px 12px;font-size:12px}
+.btn:hover{opacity:.85}.btn:disabled{opacity:.5;cursor:wait}
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.resumo div{background:#fff;border:1px solid var(--linha);padding:14px 16px;border-radius:6px}
+.resumo small{color:var(--g2);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.resumo b{display:block;font-weight:400;font-size:26px;margin-top:4px}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--linha);border-radius:6px;overflow:hidden}
+.card.alerta{border-color:var(--preto)}
+.card.off{opacity:.55}.card.off .topo{background:var(--g2)}
+.topo{background:var(--preto);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.topo span{letter-spacing:.08em}
+.eq{font-size:10px;letter-spacing:.14em;color:var(--g3);border:1px solid var(--g2);padding:3px 7px;border-radius:3px;margin-left:8px;white-space:nowrap}
+.topo button{background:none;border:1px solid var(--g2);color:var(--g3);padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+.info{padding:12px 16px;border-bottom:1px solid var(--linha);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.email{color:var(--g1);font-size:13px;word-break:break-all}
+.pessoa{display:flex;align-items:center;gap:6px}
+.tag{font-size:11px;padding:4px 9px;border-radius:20px;letter-spacing:.04em;white-space:nowrap}
+.tag.ativo{background:#ececee;color:var(--preto)}
+.tag.trein{background:var(--g3);color:#fff}
+.tag.vaga{background:var(--preto);color:#fff}
+.tag.off{background:#fff;color:var(--g2);border:1px solid var(--g3)}
+.aviso{background:var(--g1);color:#fff;font-size:12px;padding:9px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.aviso button{background:#fff;color:var(--preto);border:0;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+ul.plat{list-style:none}
+ul.plat li{display:grid;grid-template-columns:110px 1fr auto;align-items:center;padding:8px 16px;border-bottom:1px solid #f1f0f3;gap:8px;font-size:13px}
+ul.plat li:last-child{border:0}
+ul.plat li.off{background:#fafafb}
+ul.plat li.off .nome,ul.plat li.off .senha,ul.plat li.off .via{color:var(--g3)}
+.nome{color:var(--g2)}
+.senha{letter-spacing:.06em;word-break:break-all}
+.senha.oculta{letter-spacing:.2em;color:var(--g3)}
+.via{color:var(--g2);font-size:12px}
+.na{color:var(--g3);font-size:12px}
+.pendente{text-decoration:line-through;text-decoration-color:var(--g3)}
+.acoes{display:flex;gap:4px;align-items:center}
+.ic{background:none;border:1px solid var(--linha);border-radius:3px;width:28px;height:26px;cursor:pointer;display:grid;place-items:center;color:var(--g1);flex:none}
+.ic:hover{border-color:var(--preto);color:var(--preto)}
+.ic svg{width:14px;height:14px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--linha)}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--linha);font-size:13px}
+th{background:var(--preto);color:#fff;font-weight:400;letter-spacing:.08em;font-size:12px}
+tr.off td{color:var(--g3)}
+.tabela{overflow-x:auto}
+.vazio{padding:50px;text-align:center;color:var(--g2);background:#fff;border:1px solid var(--linha);border-radius:6px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:10}
+.modal.aberto{display:flex}
+.caixa{background:#fff;border-radius:6px;width:100%;max-width:640px}
+.caixa h3{font-weight:400;background:var(--preto);color:#fff;padding:16px 20px;letter-spacing:.1em;border-radius:6px 6px 0 0}
+.corpo{padding:20px;display:grid;gap:12px}
+.corpo label{font-size:12px;color:var(--g2);display:grid;gap:5px}
+.corpo label.ck{display:flex;align-items:center;gap:8px;color:var(--preto);font-size:13px}
+.corpo label.ck input{width:auto}
+.corpo input,.corpo select{border:1px solid var(--linha);padding:9px 10px;border-radius:4px;width:100%}
+.lin{display:grid;grid-template-columns:110px 140px 1fr;gap:8px;align-items:center}
+.lin.off span{color:var(--g3)}
+.sep{font-size:11px;letter-spacing:.12em;color:var(--g2);border-top:1px solid var(--linha);padding-top:12px}
+.rodape{padding:14px 20px;border-top:1px solid var(--linha);display:flex;justify-content:flex-end;gap:8px}
+.check li,.hist li{list-style:none;display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linha);font-size:13px}
+.hist li{justify-content:space-between;color:var(--g1)}
+.hist small{color:var(--g3)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--preto);color:#fff;padding:11px 20px;border-radius:4px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+.bloqueio{text-align:center;padding:80px 20px;color:var(--g2)}
+.bloqueio b{display:block;color:var(--preto);font-weight:400;font-size:20px;letter-spacing:.12em;margin-bottom:8px}
+.bloqueio .btn{margin-top:20px;display:inline-block;text-decoration:none}
+@media(max-width:600px){header,nav,main{padding-left:16px;padding-right:16px}.grade{grid-template-columns:1fr}.lin{grid-template-columns:1fr}ul.plat li{grid-template-columns:90px 1fr auto}}
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('sc-dentro');</script>
+</head>
+<body>
+<header>
+  <div class="marca">SAINT GERMAIN<b>ACESSOS</b></div>
+  <div class="quem" id="quem"></div>
+</header>
+<nav id="abas" hidden>
+  <button class="ativo" data-aba="posicoes">POSIÇÕES</button>
+  <button data-aba="sistemas">SISTEMAS</button>
+  <button data-aba="compart">CONTAS COMPARTILHADAS</button>
+  <button data-aba="historico">HISTÓRICO</button>
+</nav>
+<main id="app"><div class="bloqueio">Carregando…</div></main>
+
+<div class="modal" id="modal"><div class="caixa" id="caixa"></div></div>
+<input type="file" id="arquivo" accept=".csv" hidden onchange="importar(event)">
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== Configuração ===== */
+const API = 'https://script.google.com/macros/s/AKfycbwQPyL6HaJGebsEyQjYYmc6zqh4hLRFYrwD4fWBntIb6zAwH9YzUIVMlMosWojUa-U/exec'; // link do app do Apps Script "Saint Center · Acessos" (termina em /exec)
+const SC_CENTER = 'https://saintgermainb-hub.github.io/saintcenter/';
+const EQUIPES = ['Equipe 01','Equipe 02'];
+
+const S = { token:'', eu:null, sistemas:[], posicoes:[], compart:[], hist:[], visiveis:{} };
+let aba='posicoes', busca='', filtroSetor='', filtroEquipe='';
+
+/* ===== Utilidades ===== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const js = s => esc(JSON.stringify(s));
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9&]/g,'');
+const agora = () => new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const admin = () => S.eu && S.eu.nivel === 'admin';
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2600); }
+const olho='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const copia='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const lapis='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+
+/* ===== Servidor ===== */
+async function call(fn, ...args){
+  if(/COLE_AQUI/.test(API)) throw new Error('O link do servidor do Acessos ainda não foi configurado.');
+  const corpo = JSON.stringify({fn, args});
+  for(let t=0;t<3;t++){
+    try{
+      const r = await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:corpo});
+      const j = await r.json();
+      if(!j.ok){ const er = Object.assign(new Error(j.erro||'Erro inesperado.'),{servidor:true});
+        if(/grava[cç][oõ]es agora/i.test(er.message) && t<2){ await new Promise(ok=>setTimeout(ok,1500)); continue; } throw er; }
+      return j.resultado;
+    }catch(e){ if(e.servidor) throw e; await new Promise(ok=>setTimeout(ok,1200)); }
+  }
+  throw new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.');
+}
+async function run(fn, ...args){
+  try{ return await call(fn, S.token, ...args); }
+  catch(e){
+    if(/sess[aã]o expirou/i.test(e.message)){ try{ window.parent.postMessage({saintCenter:'sessao-expirou'}, location.origin); }catch(_){} bloqueio('SESSÃO EXPIRADA','Entre de novo pelo Saint Center.',true); }
+    throw e;
+  }
+}
+function bloqueio(tit, txt, link){
+  $('abas').hidden = true;
+  $('app').innerHTML = `<div class="bloqueio"><b>${esc(tit)}</b>${esc(txt)}${link?`<br><a class="btn" href="${SC_CENTER}" target="_top">Abrir o Saint Center</a>`:''}</div>`;
+}
+function aplicar(d){ S.eu=d.eu; S.sistemas=d.sistemas; S.posicoes=d.posicoes; S.compart=d.compart; }
+
+/* ===== Ordem: desativados sempre no final ===== */
+const sistemasOrdenados = () => [...S.sistemas.filter(s=>s.ativo), ...S.sistemas.filter(s=>!s.ativo)];
+const posicoesOrdenadas = () => [...S.posicoes.filter(p=>p.status!=='off'), ...S.posicoes.filter(p=>p.status==='off')];
+
+document.querySelectorAll('#abas button').forEach(b => b.onclick = () => { aba=b.dataset.aba; document.querySelectorAll('#abas button').forEach(x=>x.classList.toggle('ativo',x===b)); render(); });
+function abrir(html){ $('caixa').innerHTML=html; $('modal').classList.add('aberto'); }
+function fechar(){ $('modal').classList.remove('aberto'); }
+$('modal').onclick = e => { if(e.target.id==='modal') fechar(); };
+async function salvando(btn, fn){ const b = btn; if(b){ b.disabled=true; b._t=b.textContent; b.textContent='Salvando…'; } try{ await fn(); } catch(e){ toast(e.message); } finally{ if(b && document.body.contains(b)){ b.disabled=false; b.textContent=b._t; } } }
+
+/* ===== Telas ===== */
+function tagStatus(p){
+  if(p.status==='vaga') return '<span class="tag vaga">Vaga aberta</span>';
+  if(p.status==='off') return `<span class="tag off">Desativado${p.resp?' · '+esc(p.resp):''}</span>`;
+  if(p.status==='trein') return `<span class="tag trein">${esc(p.resp)} · Em treinamento</span>`;
+  return `<span class="tag ativo">${esc(p.resp)||'—'}</span>`;
+}
+function linhaAcesso(p, s){
+  const a = (p.acessos||{})[s.nome]; if(!a) return '';
+  const chave = p.id+'|'+s.nome, pend = (p.trocar||[]).includes(s.nome);
+  let val, bts='';
+  if(a.t==='senha'){
+    if(!a.tem) val='<span class="na">Senha não cadastrada</span>';
+    else{
+      const v = S.visiveis[chave];
+      val = `<span class="senha ${v!==undefined?'':'oculta'} ${pend?'pendente':''}">${v!==undefined?esc(v):'••••••••'}</span>`;
+      bts = `<button class="ic" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`;
+    }
+  }else if(a.t==='google') val='<span class="via">Acesso pelo Google</span>';
+  else if(a.t==='frete') val='<span class="via">Acesso pelo FreteBarato</span>';
+  else val='<span class="na">Não se aplica</span>';
+  return `<li class="${s.ativo?'':'off'}"><span class="nome">${esc(s.nome)}</span>${val}<div class="acoes">${s.ativo?'':'<span class="tag off">Desativado</span>'}${bts}</div></li>`;
+}
+function render(){
+  $('abas').hidden = false;
+  $('quem').textContent = (S.eu.nome||'') + ' · ' + (admin()?'Administração':'Equipe');
+  ({posicoes:renderPosicoes, sistemas:renderSistemas, compart:renderCompart, historico:renderHistorico})[aba]($('app'));
+}
+function renderPosicoes(app){
+  const setores = [...new Set(S.posicoes.map(p=>p.setor))];
+  const lista = posicoesOrdenadas().filter(p => (!filtroSetor||p.setor===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe) && (!busca||(p.setor+' '+(p.resp||'')+' '+(p.email||'')).toLowerCase().includes(busca.toLowerCase())));
+  const cont = st => S.posicoes.filter(p=>p.status===st).length, pend = S.posicoes.reduce((s,p)=>s+(p.trocar||[]).length,0);
+  app.innerHTML = `
+  <div class="resumo">
+    <div><small>Posições ativas</small><b>${S.posicoes.length-cont('off')}</b></div>
+    <div><small>Vagas abertas</small><b>${cont('vaga')}</b></div>
+    <div><small>Em treinamento</small><b>${cont('trein')}</b></div>
+    <div><small>Desativadas</small><b>${cont('off')}</b></div>
+    <div><small>Senhas a trocar</small><b>${pend}</b></div>
+  </div>
+  <div class="barra">
+    <input id="busca" placeholder="Buscar setor, pessoa ou e-mail" value="${esc(busca)}">
+    <select id="fSet"><option value="">Todos os setores</option>${setores.map(s=>`<option ${s===filtroSetor?'selected':''}>${esc(s)}</option>`).join('')}</select>
+    <select id="fEq"><option value="">Todas as equipes</option>${EQUIPES.map(e=>`<option ${e===filtroEquipe?'selected':''}>${e}</option>`).join('')}</select>
+    <span class="esp"></span>
+    ${admin()?`<button class="btn sec" onclick="$('arquivo').click()">Importar planilha (CSV)</button>`:''}
+    <button class="btn" onclick="editar()">+ Nova posição</button>
+  </div>
+  ${lista.length?`<div class="grade">${lista.map(p=>`
+    <div class="card ${(p.trocar||[]).length?'alerta':''} ${p.status==='off'?'off':''}">
+      <div class="topo"><span>${esc(String(p.setor).toUpperCase())}${p.equipe?`<span class="eq">${esc(p.equipe.toUpperCase())}</span>`:''}</span><button onclick='editar(${js(p.id)})'>Editar</button></div>
+      ${(p.trocar||[]).length?`<div class="aviso"><span>${p.trocar.length} senha(s) para trocar</span><button onclick='checklist(${js(p.id)})'>Ver lista</button></div>`:''}
+      <div class="info"><span class="email">${esc(p.email)}</span><span class="pessoa">${tagStatus(p)}<button class="ic" title="Trocar responsável" onclick='trocarResp(${js(p.id)})'>${lapis}</button></span></div>
+      <ul class="plat">${sistemasOrdenados().map(s=>linhaAcesso(p,s)).join('')}</ul>
+    </div>`).join('')}</div>`:`<div class="vazio">${S.posicoes.length?'Nenhuma posição encontrada.':'Nenhuma posição cadastrada ainda.'+(admin()?' Use "Importar planilha (CSV)" para trazer a planilha ACESSOS SG!.':'')}</div>`}`;
+  const b=$('busca'); b.oninput=()=>{ busca=b.value; render(); const n=$('busca'); n.focus(); n.setSelectionRange(n.value.length,n.value.length); };
+  $('fSet').onchange=e=>{ filtroSetor=e.target.value; render(); };
+  $('fEq').onchange=e=>{ filtroEquipe=e.target.value; render(); };
+}
+function renderSistemas(app){
+  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Sistemas desativados continuam guardados e vão automaticamente para o final da lista.</span><span class="esp"></span>${admin()?'<button class="btn" onclick="novoSistema()">+ Novo sistema</button>':''}</div>
+  <div class="tabela"><table><thead><tr><th>SISTEMA</th><th>SITUAÇÃO</th><th>POSIÇÕES COM ACESSO</th>${admin()?'<th></th>':''}</tr></thead><tbody>
+  ${sistemasOrdenados().map(s=>`<tr class="${s.ativo?'':'off'}"><td>${esc(s.nome)}</td><td>${s.ativo?'<span class="tag ativo">Ativo</span>':'<span class="tag off">Desativado</span>'}</td>
+  <td>${S.posicoes.filter(p=>(p.acessos||{})[s.nome]).length}</td>
+  ${admin()?`<td><div class="acoes"><button class="btn sec min" onclick='renomearSistema(${js(s.id)})'>Renomear</button><button class="btn ${s.ativo?'sec':''} min" onclick='alternarSistema(${js(s.id)},this)'>${s.ativo?'Desativar':'Reativar'}</button></div></td>`:''}</tr>`).join('')}
+  </tbody></table></div>`;
+}
+function renderCompart(app){
+  app.innerHTML = `<div class="barra"><span class="esp"></span><button class="btn" onclick="editarC()">+ Nova conta</button></div>
+  ${S.compart.length?`<div class="tabela"><table><thead><tr><th>CONTA</th><th>QUEM USA</th><th>E-MAIL</th><th>SENHA</th><th></th></tr></thead><tbody>
+  ${S.compart.map(c=>{const k='c|'+c.id,v=S.visiveis[k];return `<tr><td>${esc(c.nome)}</td><td>${esc(c.quem)}</td><td>${esc(c.email)||'<span class="na">—</span>'}</td>
+  <td>${c.tem?`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):'••••••••'}</span>`:'<span class="na">Não cadastrada</span>'}</td>
+  <td><div class="acoes">${c.tem?`<button class="ic" title="Mostrar senha" onclick='mostrar("c",${js(c.id)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("c",${js(c.id)})'>${copia}</button>`:''}<button class="ic" title="Editar" onclick='editarC(${js(c.id)})'>${lapis}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`:'<div class="vazio">Nenhuma conta compartilhada cadastrada.</div>'}`;
+}
+async function renderHistorico(app){
+  app.innerHTML = '<div class="vazio">Carregando histórico…</div>';
+  try{ S.hist = await run('historico'); }catch(e){ app.innerHTML=`<div class="vazio">${esc(e.message)}</div>`; return; }
+  if(aba!=='historico') return;
+  app.innerHTML = S.hist.length?`<div class="tabela"><table><thead><tr><th>QUANDO</th><th>QUEM</th><th>AÇÃO</th><th>ONDE</th></tr></thead><tbody>${S.hist.map(h=>`<tr><td>${esc(h.quando)}</td><td>${esc(h.quem)}</td><td>${esc(h.acao)}</td><td>${esc(h.alvo)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="vazio">Nenhuma ação registrada ainda.</div>';
+}
+
+/* ===== Senhas ===== */
+async function mostrar(tipo, id, sis){
+  const k = tipo==='c' ? 'c|'+id : id+'|'+sis;
+  if(S.visiveis[k]!==undefined){ delete S.visiveis[k]; render(); return; }
+  try{ S.visiveis[k] = await run('verSenha', tipo, id, sis||'', 'ver'); render(); }catch(e){ toast(e.message); }
+}
+async function copiar(tipo, id, sis){
+  try{
+    const v = await run('verSenha', tipo, id, sis||'', 'copiar');
+    try{ await navigator.clipboard.writeText(v); }
+    catch(_){ const t=document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    toast('Senha copiada');
+  }catch(e){ toast(e.message); }
+}
+
+/* ===== Sistemas ===== */
+function novoSistema(){
+  abrir(`<h3>NOVO SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" placeholder="Ex.: Mercado Livre"></label></div>
+  <div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvarSistema(null,this)">Incluir</button></div>`);
+  setTimeout(()=>$('sNome').focus(),50);
+}
+function renomearSistema(id){
+  const s = S.sistemas.find(x=>x.id===id);
+  abrir(`<h3>RENOMEAR SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" value="${esc(s.nome)}"></label></div>
+  <div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvarSistema(${js(id)},this)'>Salvar</button></div>`);
+}
+function salvarSistema(id, btn){
+  const nome = $('sNome').value.trim(); if(!nome){ toast('Digite o nome do sistema'); return; }
+  salvando(btn, async () => {
+    const d = await run('sistema', id?'renomear':'novo', {id, nome});
+    aplicar(d); fechar(); render(); toast(id?'Sistema renomeado':`${nome} incluído. Cadastre o acesso em "Editar" de cada posição.`);
+  });
+}
+function alternarSistema(id, btn){
+  salvando(btn, async () => { const d = await run('sistema','alternar',{id}); aplicar(d); render(); const s=S.sistemas.find(x=>x.id===id); toast(s.ativo?`${s.nome} reativado`:`${s.nome} desativado e movido para o final`); });
+}
+
+/* ===== Posições ===== */
+const NOME_ST = {ativo:'Ativa',trein:'Em treinamento',vaga:'Vaga aberta',off:'Desativado'};
+function mudancas(p, novo, st, equipe, criarLista, logs){
+  if(st==='vaga' && novo && p.status==='vaga') st='ativo'; // preencheu a vaga
+  if(st==='vaga') novo='';
+  const mudouPessoa = novo!==(p.resp||''), mudouStatus = st!==p.status;
+  p.histResp = p.histResp || []; p.trocar = p.trocar || [];
+  if(mudouPessoa){ p.histResp.unshift({de:p.resp||'', para:novo||(st==='vaga'?'Vaga aberta':''), quando:agora()}); logs.push({acao:'Trocou responsável', alvo:`${p.setor}: ${p.resp||'—'} → ${novo||'Vaga aberta'}`}); }
+  if(mudouStatus && !mudouPessoa) logs.push({acao:'Mudou situação', alvo:`${p.setor}: ${NOME_ST[st]}`});
+  if((p.equipe||'')!==equipe){ logs.push({acao:'Mudou equipe', alvo:`${p.setor}: ${p.equipe||'Sem equipe'} → ${equipe||'Sem equipe'}`}); p.equipe=equipe; }
+  let aviso='';
+  if(mudouStatus && st==='off') aviso='Posição desativada e movida para o final da fila';
+  if(mudouPessoa && criarLista!==false && p.resp){ p.trocar = Object.keys(p.acessos||{}).filter(n=>p.acessos[n].t==='senha'&&p.acessos[n].tem); if(p.trocar.length) aviso='Lista de senhas para trocar criada'; }
+  p.resp=novo; p.status=st;
+  return aviso;
+}
+function limpa(p){ const c=JSON.parse(JSON.stringify(p)); Object.values(c.acessos||{}).forEach(a=>{ delete a.tem; }); return c; }
+function trocarResp(id){
+  const p = S.posicoes.find(x=>x.id===id);
+  const op = (v,l) => `<option value="${v}" ${p.status===v?'selected':''}>${l}</option>`;
+  const temSenha = Object.values(p.acessos||{}).some(a=>a.t==='senha'&&a.tem);
+  abrir(`<h3>TROCAR RESPONSÁVEL</h3><div class="corpo">
+    <p style="color:var(--g2)">${esc(p.setor)} · ${esc(p.email)}</p>
+    <label>Nome da responsável<input id="rNome" value="${esc(p.resp)}" placeholder="Nome da pessoa"></label>
+    <label>Equipe<select id="rEquipe"><option value="">Sem equipe</option>${EQUIPES.map(e=>`<option ${p.equipe===e?'selected':''}>${e}</option>`).join('')}</select></label>
+    <label>Situação<select id="rStatus">${op('ativo','Ativa')}${op('trein','Em treinamento')}${op('vaga','Vaga aberta')}${op('off','Desativado')}</select></label>
+    ${temSenha?'<label class="ck"><input type="checkbox" id="rTrocar" checked> Se a pessoa mudar, criar lista de senhas para trocar</label>':''}
+    <div class="sep">HISTÓRICO DE RESPONSÁVEIS</div>
+    ${(p.histResp||[]).length?`<ul class="hist">${p.histResp.map(h=>`<li><span>${esc(h.de||'—')} → ${esc(h.para||'—')}</span><small>${esc(h.quando)}</small></li>`).join('')}</ul>`:'<span class="na">Nenhuma troca registrada ainda.</span>'}
+  </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvarResp(${js(id)},this)'>Salvar</button></div>`);
+}
+function salvarResp(id, btn){
+  const p = limpa(S.posicoes.find(x=>x.id===id)), logs=[];
+  const aviso = mudancas(p, $('rNome').value.trim(), $('rStatus').value, $('rEquipe').value, $('rTrocar')?.checked, logs);
+  salvando(btn, async () => { await gravarPos(p, logs); fechar(); render(); if(aviso) toast(aviso); });
+}
+async function gravarPos(p, logs){
+  const r = await run('salvarPosicao', p, logs);
+  const i = S.posicoes.findIndex(x=>x.id===r.id);
+  if(i>=0) S.posicoes[i]=r; else S.posicoes.push(r);
+  Object.keys(S.visiveis).filter(k=>k.startsWith(r.id+'|')).forEach(k=>delete S.visiveis[k]);
+}
+function editar(id){
+  const p = id ? S.posicoes.find(x=>x.id===id) : {setor:'',equipe:'',resp:'',status:'ativo',email:'',acessos:{}};
+  const op = (v,l,a) => `<option value="${esc(v)}" ${a===v?'selected':''}>${esc(l)}</option>`;
+  const linha = s => { const a=(p.acessos||{})[s.nome]||{t:'vazio'}; return `<div class="lin ${s.ativo?'':'off'}"><span>${esc(s.nome)}${s.ativo?'':' (desativado)'}</span>
+    <select data-p="${esc(s.nome)}" class="fTipo">${op('vazio','—',a.t)}${op('senha','Senha',a.t)}${op('google','Pelo Google',a.t)}${op('frete','Pelo FreteBarato',a.t)}${op('na','Não se aplica',a.t)}</select>
+    <input data-p="${esc(s.nome)}" class="fVal" type="text" autocomplete="off" placeholder="${a.t==='senha'&&a.tem?'Manter a senha atual':'Senha'}"></div>`; };
+  abrir(`<h3>${id?'EDITAR POSIÇÃO':'NOVA POSIÇÃO'}</h3><div class="corpo">
+    <label>Setor<input id="fSetor" value="${esc(p.setor)}"></label>
+    <label>Equipe<select id="fEquipe"><option value="">Sem equipe</option>${EQUIPES.map(e=>op(e,e,p.equipe)).join('')}</select></label>
+    <label>Responsável<input id="fResp" value="${esc(p.resp)}"></label>
+    <label>Situação<select id="fStatus">${op('ativo','Ativa',p.status)}${op('trein','Em treinamento',p.status)}${op('vaga','Vaga aberta',p.status)}${op('off','Desativado',p.status)}</select></label>
+    <label>E-mail da posição<input id="fEmail" value="${esc(p.email)}"></label>
+    <div class="sep">ACESSOS · deixe a senha em branco para manter a atual</div>
+    ${sistemasOrdenados().map(linha).join('')}
+    ${admin()?'<button class="btn sec min" style="justify-self:start" onclick="fechar();novoSistema()">+ Incluir outro sistema</button>':''}
+  </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvar(${js(id||'')},this)'>Salvar</button></div>`);
+}
+function salvar(id, btn){
+  const acessos={}, trocadas=[];
+  document.querySelectorAll('.fTipo').forEach(s => { const n=s.dataset.p, t=s.value; if(t==='vazio') return;
+    const v=[...document.querySelectorAll('.fVal')].find(i=>i.dataset.p===n).value;
+    if(t==='senha'){ acessos[n] = v ? {t, v} : {t}; if(v) trocadas.push(n); } else acessos[n]={t}; });
+  const setor=$('fSetor').value.trim()||'Sem setor', st=$('fStatus').value, resp=$('fResp').value.trim(), email=$('fEmail').value.trim(), equipe=$('fEquipe').value, logs=[];
+  let p, aviso='';
+  if(id){
+    p = limpa(S.posicoes.find(x=>x.id===id));
+    Object.assign(p, {setor, email, acessos});
+    p.trocar = (p.trocar||[]).filter(n=>!trocadas.includes(n) && acessos[n]);
+    trocadas.length && logs.push({acao:'Alterou senha', alvo:`${setor} · ${trocadas.join(', ')}`});
+    aviso = mudancas(p, resp, st, equipe, true, logs);
+    logs.push({acao:'Editou posição', alvo:setor});
+  }else{
+    p = {setor, equipe, resp: st==='vaga'?'':resp, status:st, email, acessos, trocar:[], histResp:[]};
+    logs.push({acao:'Criou posição', alvo:setor});
+  }
+  salvando(btn, async () => { await gravarPos(p, logs); fechar(); render(); if(aviso) toast(aviso); });
+}
+function checklist(id){
+  const p = S.posicoes.find(x=>x.id===id);
+  abrir(`<h3>SENHAS PARA TROCAR</h3><div class="corpo"><p style="color:var(--g2)">${esc(p.setor)} — troque nas plataformas, cadastre a nova senha em "Editar" ou marque aqui.</p><ul class="check">${p.trocar.map(n=>`<li><input type="checkbox" data-n="${esc(n)}"> ${esc(n)}</li>`).join('')}</ul></div>
+  <div class="rodape"><button class="btn sec" onclick="fechar()">Fechar</button><button class="btn" onclick='concluir(${js(id)},this)'>Marcar como trocadas</button></div>`);
+}
+function concluir(id, btn){
+  const p = limpa(S.posicoes.find(x=>x.id===id)), feitos=[...document.querySelectorAll('.check input:checked')].map(c=>c.dataset.n);
+  if(!feitos.length){ fechar(); return; }
+  p.trocar = p.trocar.filter(n=>!feitos.includes(n));
+  salvando(btn, async () => { await gravarPos(p, [{acao:'Confirmou troca de senha', alvo:`${p.setor} · ${feitos.join(', ')}`}]); fechar(); render(); });
+}
+
+/* ===== Contas compartilhadas ===== */
+function editarC(id){
+  const c = id ? S.compart.find(x=>x.id===id) : {nome:'',quem:'',email:''};
+  abrir(`<h3>${id?'EDITAR CONTA':'NOVA CONTA COMPARTILHADA'}</h3><div class="corpo">
+    <label>Conta<input id="cNome" value="${esc(c.nome)}" placeholder="Ex.: Trello Suporte"></label>
+    <label>Quem usa<input id="cQuem" value="${esc(c.quem)}"></label>
+    <label>E-mail<input id="cEmail" value="${esc(c.email)}"></label>
+    <label>Senha<input id="cSenha" autocomplete="off" placeholder="${c.tem?'Manter a senha atual':'Senha'}"></label>
+  </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvarC(${js(id||'')},this)'>Salvar</button></div>`);
+}
+function salvarC(id, btn){
+  const c = {id:id||'', nome:$('cNome').value.trim()||'Sem nome', quem:$('cQuem').value.trim(), email:$('cEmail').value.trim()};
+  const s = $('cSenha').value; if(s) c.senha = s;
+  salvando(btn, async () => {
+    const r = await run('salvarCompart', c, [{acao: id?(s?'Alterou senha':'Editou conta'):'Criou conta', alvo:c.nome}]);
+    const i = S.compart.findIndex(x=>x.id===r.id); if(i>=0) S.compart[i]=r; else S.compart.push(r);
+    delete S.visiveis['c|'+r.id]; fechar(); render();
+  });
+}
+
+/* ===== Importação CSV (planilha ACESSOS SG!) ===== */
+function parseCSV(txt){const r=[];let row=[],cel='',q=false;for(let i=0;i<txt.length;i++){const c=txt[i];if(q){if(c==='"'&&txt[i+1]==='"'){cel+='"';i++}else if(c==='"')q=false;else cel+=c}else if(c==='"')q=true;else if(c===','){row.push(cel);cel=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;row.push(cel);r.push(row);row=[];cel=''}else cel+=c}if(cel||row.length){row.push(cel);r.push(row)}return r}
+function importar(ev){
+  const f = ev.target.files[0]; ev.target.value=''; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const linhas = parseCSV(rd.result), hi = linhas.findIndex(l=>l.some(c=>norm(c)==='email'));
+    if(hi<0){ toast('Não encontrei a coluna E-mail no arquivo'); return; }
+    const cabB = linhas[hi], cab = cabB.map(norm), iE = cab.indexOf('email'), iR = cab.findIndex(c=>c.startsWith('re')&&c.includes('ponsavel')), iQ = cab.findIndex(c=>c==='equipe'||c==='time');
+    const mapa = {}, novosSis = [];
+    cabB.forEach((h,i) => { if(i<=Math.max(iE,iR) || i===iQ || !h.trim()) return;
+      const n = norm(h); const s = S.sistemas.find(x=>norm(x.nome)===n || (n==='saintrocas'&&norm(x.nome)==='sainttrocas'));
+      const nome = s ? s.nome : h.trim(); if(!s) novosSis.push(nome); mapa[nome]=i; });
+    const pos=[], comp=[];
+    linhas.slice(hi+1).forEach(l => {
+      const setor=(l[0]||'').trim(); if(!setor) return;
+      const email=(l[iE]||'').trim(), respB=(l[iR]||'').trim(), acessos={};
+      Object.entries(mapa).forEach(([n,i]) => { const v=(l[i]||'').trim(), nv=norm(v); if(!v) return;
+        acessos[n] = nv.includes('naoseaplica')?{t:'na'} : nv.includes('pelogoogle')?{t:'google'} : nv.includes('pelofretebarato')?{t:'frete'} : {t:'senha',v}; });
+      if(/trello|procon|reclame/i.test(setor)){ const g=Object.values(acessos).find(a=>a.t==='senha'); comp.push({nome:setor,quem:respB,email,senha:g?g.v:''}); return; }
+      const nr=norm(respB); let status='ativo', resp=respB;
+      if(nr.includes('vagaaberta')){ status='vaga'; resp=''; }
+      else if(nr.includes('desativad')){ status='off'; resp=respB.split('-')[0].replace(/desativad[oa]/i,'').trim(); }
+      else if(nr.includes('treinamento')){ status='trein'; resp=respB.split('-')[0].trim(); }
+      const qv = norm(l[iQ]||''), equipe = iQ<0 ? '' : (/01$|1$/.test(qv) ? 'Equipe 01' : /02$|2$/.test(qv) ? 'Equipe 02' : '');
+      pos.push({setor, equipe, resp, status, email, acessos, trocar:[], histResp:[]});
+    });
+    if(!pos.length && !comp.length){ toast('Nenhuma linha encontrada no arquivo'); return; }
+    abrir(`<h3>IMPORTAR PLANILHA</h3><div class="corpo">
+      <p>Encontrei <b>${pos.length}</b> posições e <b>${comp.length}</b> contas compartilhadas${novosSis.length?` e <b>${novosSis.length}</b> sistema(s) novo(s): ${esc(novosSis.join(', '))}`:''}.</p>
+      ${S.posicoes.length||S.compart.length?'<p style="color:var(--g2)">Atenção: a importação substitui as posições e contas que já estão no sistema. Sua planilha original não é alterada.</p>':''}
+    </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" id="btnImp">Importar</button></div>`);
+    $('btnImp').onclick = () => salvando($('btnImp'), async () => { const d = await run('importar', pos, comp, novosSis); aplicar(d); S.visiveis={}; fechar(); render(); toast(`Importado: ${pos.length} posições e ${comp.length} contas compartilhadas`); });
+  };
+  rd.readAsText(f, 'UTF-8');
+}
+
+/* ===== Início ===== */
+(async function iniciar(){
+  try{ S.token = localStorage.getItem('sc-token') || ''; }catch(_){}
+  if(!S.token){ bloqueio('ENTRE PELO SAINT CENTER','O módulo Acessos usa o mesmo login do Saint Center.',true); return; }
+  try{ aplicar(await call('carregar', S.token)); render(); }
+  catch(e){
+    if(/n[aã]o tem acesso/i.test(e.message)) bloqueio('ACESSO RESTRITO','Este módulo é exclusivo da coordenação e da supervisão.');
+    else if(/sess[aã]o expirou/i.test(e.message)) bloqueio('SESSÃO EXPIRADA','Entre de novo pelo Saint Center.',true);
+    else bloqueio('NÃO FOI POSSÍVEL CARREGAR', e.message);
+  }
+})();
+</script>
+</body>
+</html>
