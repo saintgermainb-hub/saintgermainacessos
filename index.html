@@ -144,7 +144,10 @@ const SIS = {
   loggi:{nome:'Loggi',al:['loggi']}, trocas:{nome:'SaintTrocas',al:['sainttrocas','saintrocas']},
   primie:{nome:'Laboratório Primie',al:['laboratorioprimie','primie']}, iguacu:{nome:'Laboratório Iguaçu',al:['laboratorioiguacu','iguacu']},
   repro:{nome:'Laboratório Repro',al:['laboratoriorepro','repro']},
-  ml:{nome:'Mercado Livre',al:['mercadolivre']}, tiktok:{nome:'TikTok',al:['tiktok','tiktokshop']}, shopee:{nome:'Shopee',al:['shopee','shope']}
+  ml:{nome:'Mercado Livre',al:['mercadolivre']},
+  ra:{nome:'Reclame Aqui',al:['reclameaqui','reclameaquiadm','reclameaquisuporte']}, procon:{nome:'Procon',al:['procon']},
+  whatsjur:{nome:'WhatsApp grupo Jurídico',al:['whatsappgrupojuridico','whatsappjuridico','grupojuridico']},
+  igsg:{nome:'Instagram SG',al:['instagramsg','instagramsaintgermain']}, iguana:{nome:'Instagram Uana',al:['instagramuana','uana']}, tiktok:{nome:'TikTok',al:['tiktok','tiktokshop']}, shopee:{nome:'Shopee',al:['shopee','shope']}
 };
 const TODOS = ['google','bling','desk','nuvem','slack'];
 const TRANSP = ['wms','jt','estoca','mandae','anjun','correios','frete','total','loggi'];
@@ -156,30 +159,31 @@ const PADRAO = [
   {setor:'Ticket Transporte', sis:TRANSP, chaves:['tickettransporte']},
   {setor:'Torre de Controle', sis:TRANSP, chaves:['torredecontrole'], obs:'mesmo acesso de Ticket Transporte'},
   {setor:'Trocas & Devoluções', sis:['correios','trocas'], chaves:['trocas&devolucoes','trocasedevolucoes','trocaedevolucao','trocasdevolucoes']},
-  {setor:'Personalizados', sis:['primie','iguacu','repro'], chaves:['personalizados','lentes','suportelentes'], obs:'ex-Lentes'},
+  {setor:'Personalizados', sis:['primie','iguacu','repro'], chaves:['personalizados','lentes','suportelentes']},
   {setor:'Marketplace', sis:['ml','tiktok','shopee'], chaves:['marketplace']},
-  {setor:'Customer Success', sis:[], chaves:['customersuccess','cs']},
-  {setor:'Suporte Comercial', sis:[], chaves:['suportecomercial']},
-  {setor:'Live', sis:[], chaves:['live']}
+  {setor:'Customer Success', sis:['ra','procon','whatsjur','igsg','iguana'], chaves:['customersuccess','cs']},
+  {setor:'Suporte Comercial', sis:['trocas','estoca'], chaves:['suportecomercial']},
+  {setor:'Live', sis:[], chaves:['live'], obs:'acessos específicos a definir'}
 ];
 const regraDe = setor => { const n=norm(setor); return PADRAO.find(r=>r.chaves.includes(n)); };
 const achaSis = k => S.sistemas.find(s=>SIS[k].al.includes(norm(s.nome)));
+const achaComp = k => S.compart.find(c=>SIS[k].al.some(a=>norm(c.nome).startsWith(a)));
 // Lista do que o setor precisa: [{nome, sis (cadastrado ou undefined)}]
 function necessarios(setor){
   const r = regraDe(setor); if(!r) return null;
   if(r.tudo){
-    const lista = Object.keys(SIS).map(k=>({nome:SIS[k].nome, sis:achaSis(k)}));
+    const lista = Object.keys(SIS).map(k=>({nome:SIS[k].nome, sis:achaSis(k), comp:!achaSis(k)&&achaComp(k)}));
     S.sistemas.filter(s=>s.ativo && !lista.some(i=>i.sis===s)).forEach(s=>lista.push({nome:s.nome, sis:s}));
     return lista;
   }
-  return [...TODOS, ...r.sis].map(k=>({nome:SIS[k].nome, sis:achaSis(k)}));
+  return [...TODOS, ...r.sis].map(k=>({nome:SIS[k].nome, sis:achaSis(k), comp:!achaSis(k)&&achaComp(k)}));
 }
 const acessoOk = a => a && a.t!=='na' && (a.t!=='senha' || a.tem || a.v);
 // O que falta criar/liberar numa posição (posições desativadas não contam)
 function faltas(p){
   if(p.status==='off') return [];
   const n = necessarios(p.setor); if(!n) return [];
-  return n.filter(i=>!i.sis || !acessoOk((p.acessos||{})[i.sis.nome]));
+  return n.filter(i=>!i.comp && (!i.sis || !acessoOk((p.acessos||{})[i.sis.nome])));
 }
 
 const S = { token:'', eu:null, sistemas:[], posicoes:[], compart:[], hist:[], visiveis:{}, cache:{}, carregando:'' };
@@ -239,17 +243,21 @@ const sistemasOrdenados = () => [...S.sistemas.filter(s=>s.ativo), ...S.sistemas
 /* ===== Ordem dos setores =====
    Setores com o mesmo nome escrito diferente (ex.: "TICKET TRANSPORTE" e "Ticket Transporte") ficam juntos.
    A ordem escolhida em "Ordem dos setores" fica salva no servidor e vale para todos. */
+// Cadastros de plataforma (logins usados por várias pessoas): aparecem em Contas Compartilhadas, não em Posições
+const SETORES_COMPART = ['mercadolivre','shope','shopee','tiktok','gmail','meta'];
+const ehCompart = p => SETORES_COMPART.includes(norm(p.setor));
+const posTime = () => S.posicoes.filter(p=>!ehCompart(p));
 const grupo = setor => regraDe(setor)?.setor || String(setor||'Sem setor').trim();
 function ordemSetores(){
   const salvos = (S.ordemCfg && S.ordemCfg.ordem) || [];
-  const presentes = [...new Set(S.posicoes.map(p=>grupo(p.setor)))];
+  const presentes = [...new Set(posTime().map(p=>grupo(p.setor)))];
   const todos = [...new Set([...PADRAO.map(r=>r.setor), ...presentes])];
   return [...new Set([...salvos.filter(s=>todos.includes(s)), ...todos])];
 }
 const posicoesOrdenadas = () => {
   const ordem = ordemSetores(), pos = p => ordem.indexOf(grupo(p.setor));
   // desativados sempre no final; dentro de cada setor, Equipe 01 antes da Equipe 02
-  return S.posicoes.map((p,i)=>({p,i})).sort((a,b) =>
+  return posTime().map((p,i)=>({p,i})).sort((a,b) =>
     (a.p.status==='off')-(b.p.status==='off') || pos(a.p)-pos(b.p) || String(a.p.equipe||'~').localeCompare(String(b.p.equipe||'~')) || a.i-b.i
   ).map(x=>x.p);
 };
@@ -288,15 +296,23 @@ function render(){
   $('quem').textContent = (S.eu.nome||'') + ' · ' + (admin()?'Administração':'Equipe');
   ({posicoes:renderPosicoes, padrao:renderPadrao, sistemas:renderSistemas, compart:renderCompart, historico:renderHistorico})[aba]($('app'));
 }
+function cardPos(p){ return `
+    <div class="card ${(p.trocar||[]).length?'alerta':''} ${p.status==='off'?'off':''}">
+      <div class="topo"><span>${esc(String(p.setor).toUpperCase())}${p.equipe?`<span class="eq">${esc(p.equipe.toUpperCase())}</span>`:''}</span><button onclick='editar(${js(p.id)})'>Editar</button></div>
+      ${(p.trocar||[]).length?`<div class="aviso"><span>${p.trocar.length} senha(s) para trocar</span><button onclick='checklist(${js(p.id)})'>Ver lista</button></div>`:''}
+      ${faltas(p).length?`<div class="aviso leve"><span>${faltas(p).length} acesso(s) pendente(s) para criar ou liberar</span><button onclick='listaFaltas(${js(p.id)})'>Ver lista</button></div>`:''}
+      <div class="info"><span class="email">${esc(p.email)}</span><span class="pessoa">${tagStatus(p)}<button class="ic" title="Trocar responsável" onclick='trocarResp(${js(p.id)})'>${lapis}</button></span></div>
+      <ul class="plat">${sistemasOrdenados().map(s=>linhaAcesso(p,s)).join('')}</ul>
+    </div>`; }
 function renderPosicoes(app){
-  const presentes = new Set(S.posicoes.map(p=>grupo(p.setor))), setores = ordemSetores().filter(s=>presentes.has(s));
+  const presentes = new Set(posTime().map(p=>grupo(p.setor))), setores = ordemSetores().filter(s=>presentes.has(s));
   const lista = posicoesOrdenadas().filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe) && (!busca||(p.setor+' '+(p.resp||'')+' '+(p.email||'')).toLowerCase().includes(busca.toLowerCase())));
   // Resumo acompanha os filtros de setor e equipe (sem filtro = time todo)
-  const base = S.posicoes.filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe));
+  const base = posTime().filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe));
   const cont = st => base.filter(p=>p.status===st).length, pend = base.reduce((s,p)=>s+(p.trocar||[]).length,0);
   // Pessoas = posições ativas ou em treinamento com nome de responsável
   const conta = l => l.filter(p=>(p.status==='ativo'||p.status==='trein') && String(p.resp||'').trim()).length;
-  const totalTime = conta(S.posicoes), filtrado = filtroSetor||filtroEquipe;
+  const totalTime = conta(posTime()), filtrado = filtroSetor||filtroEquipe;
   const aCriar = base.reduce((s,p)=>s+faltas(p).length,0);
   app.innerHTML = `
   <div class="resumo">
@@ -318,14 +334,7 @@ function renderPosicoes(app){
     ${admin()?`<button class="btn sec" onclick="$('arquivo').click()">Importar planilha (CSV)</button>`:''}
     <button class="btn" onclick="editar()">+ Nova posição</button>
   </div>
-  ${lista.length?`<div class="grade">${lista.map(p=>`
-    <div class="card ${(p.trocar||[]).length?'alerta':''} ${p.status==='off'?'off':''}">
-      <div class="topo"><span>${esc(String(p.setor).toUpperCase())}${p.equipe?`<span class="eq">${esc(p.equipe.toUpperCase())}</span>`:''}</span><button onclick='editar(${js(p.id)})'>Editar</button></div>
-      ${(p.trocar||[]).length?`<div class="aviso"><span>${p.trocar.length} senha(s) para trocar</span><button onclick='checklist(${js(p.id)})'>Ver lista</button></div>`:''}
-      ${faltas(p).length?`<div class="aviso leve"><span>${faltas(p).length} acesso(s) pendente(s) para criar ou liberar</span><button onclick='listaFaltas(${js(p.id)})'>Ver lista</button></div>`:''}
-      <div class="info"><span class="email">${esc(p.email)}</span><span class="pessoa">${tagStatus(p)}<button class="ic" title="Trocar responsável" onclick='trocarResp(${js(p.id)})'>${lapis}</button></span></div>
-      <ul class="plat">${sistemasOrdenados().map(s=>linhaAcesso(p,s)).join('')}</ul>
-    </div>`).join('')}</div>`:`<div class="vazio">${S.posicoes.length?'Nenhuma posição encontrada.':'Nenhuma posição cadastrada ainda.'+(admin()?' Use "Importar planilha (CSV)" para trazer a planilha ACESSOS SG!.':'')}</div>`}`;
+  ${lista.length?`<div class="grade">${lista.map(cardPos).join('')}</div>`:`<div class="vazio">${posTime().length?'Nenhuma posição encontrada.':'Nenhuma posição cadastrada ainda.'+(admin()?' Use "Importar planilha (CSV)" para trazer a planilha ACESSOS SG!.':'')}</div>`}`;
   const b=$('busca'); b.oninput=()=>{ busca=b.value; render(); const n=$('busca'); n.focus(); n.setSelectionRange(n.value.length,n.value.length); };
   $('fSet').onchange=e=>{ filtroSetor=e.target.value; render(); };
   $('fEq').onchange=e=>{ filtroEquipe=e.target.value; render(); };
@@ -352,7 +361,7 @@ function renderPadrao(app){
   app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Ao criar ou editar uma posição, escolha o setor e o sistema mostra o que precisa ser criado ou liberado.</span></div>
   <div class="tabela"><table><thead><tr><th>SETOR</th><th>ACESSOS</th><th>POSIÇÕES COM ACESSO PENDENTE</th></tr></thead><tbody>
   <tr><td>Todos</td><td>${TODOS.map(k=>esc(SIS[k].nome)).join(', ')}</td><td></td></tr>
-  ${ordemSetores().map(s=>PADRAO.find(r=>r.setor===s)).filter(Boolean).map(r=>{ const pend=S.posicoes.filter(p=>regraDe(p.setor)===r && faltas(p).length).length;
+  ${ordemSetores().map(s=>PADRAO.find(r=>r.setor===s)).filter(Boolean).map(r=>{ const pend=posTime().filter(p=>regraDe(p.setor)===r && faltas(p).length).length;
     return `<tr><td>${esc(r.setor)}${r.obs?`<br><small style="color:var(--g2)">${esc(r.obs)}</small>`:''}</td>
     <td>${r.tudo?'Acesso a tudo':(r.sis.length?'Todos + '+r.sis.map(k=>esc(SIS[k].nome)).join(', '):'Somente o acesso de todos')}</td><td>${pend||'—'}</td></tr>`;}).join('')}
   </tbody></table></div>`;
@@ -365,7 +374,7 @@ function listaFaltas(id){
   </div><div class="rodape"><button class="btn sec" onclick="fechar()">Fechar</button><button class="btn" onclick='fechar();editar(${js(id)})'>Cadastrar acessos</button></div>`);
 }
 function renderSistemas(app){
-  const faltando = Object.keys(SIS).filter(k=>!achaSis(k));
+  const faltando = Object.keys(SIS).filter(k=>!achaSis(k) && !achaComp(k));
   app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Sistemas desativados continuam guardados e vão automaticamente para o final da lista.</span><span class="esp"></span>${admin()?'<button class="btn" onclick="novoSistema()">+ Novo sistema</button>':''}</div>
   ${admin()&&faltando.length?`<div class="req" style="margin-bottom:20px"><div class="r"><span style="color:var(--g2)">Sistemas do padrão por setor que ainda não estão cadastrados</span></div>${faltando.map(k=>`<div class="r"><span>${esc(SIS[k].nome)}</span><button class="btn sec min" onclick='incluirPadrao(${js(SIS[k].nome)},this)'>Incluir</button></div>`).join('')}</div>`:''}
   <div class="tabela"><table><thead><tr><th>SISTEMA</th><th>SITUAÇÃO</th><th>POSIÇÕES COM ACESSO</th>${admin()?'<th></th>':''}</tr></thead><tbody>
@@ -375,11 +384,32 @@ function renderSistemas(app){
   </tbody></table></div>`;
 }
 function renderCompart(app){
-  app.innerHTML = `<div class="barra"><span class="esp"></span><button class="btn" onclick="editarC()">+ Nova conta</button></div>
-  ${S.compart.length?`<div class="tabela"><table><thead><tr><th>CONTA</th><th>QUEM USA</th><th>E-MAIL</th><th>SENHA</th><th></th></tr></thead><tbody>
-  ${S.compart.map(c=>{const k='c|'+c.id,v=S.visiveis[k];return `<tr><td>${esc(c.nome)}</td><td>${esc(c.quem)}</td><td>${esc(c.email)||'<span class="na">—</span>'}</td>
+  // Linhas das contas compartilhadas cadastradas aqui
+  const linhasC = S.compart.map(c=>{const k='c|'+c.id,v=S.visiveis[k];return `<tr><td>${esc(c.nome)}</td><td>${esc(c.quem)||'<span class="na">—</span>'}</td><td>${esc(c.email)||'<span class="na">—</span>'}</td>
   <td>${c.tem?`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):'••••••••'}</span>`:'<span class="na">Não cadastrada</span>'}</td>
-  <td><div class="acoes">${c.tem?`<button class="ic" title="Mostrar senha" onclick='mostrar("c",${js(c.id)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("c",${js(c.id)})'>${copia}</button>`:''}<button class="ic" title="Editar" onclick='editarC(${js(c.id)})'>${lapis}</button></div></td></tr>`}).join('')}
+  <td><div class="acoes">${c.tem?`<button class="ic" title="Mostrar senha" onclick='mostrar("c",${js(c.id)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("c",${js(c.id)})'>${copia}</button>`:''}<button class="ic" title="Editar" onclick='editarC(${js(c.id)})'>${lapis}</button></div></td></tr>`});
+  // Linhas dos acessos de plataforma (Mercado Livre, Shope, TikTok, Gmail, Meta) no mesmo padrão
+  const ordem=['mercadolivre','shope','shopee','tiktok','gmail','meta'];
+  const plat = S.posicoes.filter(ehCompart).sort((a,b)=>ordem.indexOf(norm(a.setor))-ordem.indexOf(norm(b.setor)));
+  const linhasP = plat.flatMap(p=>{
+    const acs = sistemasOrdenados().filter(s=>(p.acessos||{})[s.nome] && p.acessos[s.nome].t!=='na');
+    const linha = s => {
+      const a = s ? p.acessos[s.nome] : null, k = s ? p.id+'|'+s.nome : '', v = s ? S.visiveis[k] : undefined, car = S.carregando===k;
+      const conta = esc(p.setor) + (s && acs.length>1 ? ` · ${esc(s.nome)}` : '');
+      let senha='<span class="na">Não cadastrada</span>', bts='';
+      if(a && a.t==='senha' && a.tem){ senha=`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):car?'buscando…':'••••••••'}</span>`;
+        bts=`<button class="ic ${car?'girando':''}" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`; }
+      else if(a && a.t==='google') senha='<span class="via">Acesso pelo Google</span>';
+      else if(a && a.t==='frete') senha='<span class="via">Acesso pelo FreteBarato</span>';
+      return `<tr><td>${conta}</td><td>${esc(p.resp)||'<span class="na">—</span>'}</td><td>${esc(p.email)||'<span class="na">—</span>'}</td><td>${senha}</td>
+      <td><div class="acoes">${bts}<button class="ic" title="Editar" onclick='editar(${js(p.id)})'>${lapis}</button></div></td></tr>`;
+    };
+    return acs.length ? acs.map(linha) : [linha(null)];
+  });
+  const linhas = [...linhasC, ...linhasP];
+  app.innerHTML = `<div class="barra"><span class="esp"></span><button class="btn" onclick="editarC()">+ Nova conta</button></div>
+  ${linhas.length?`<div class="tabela"><table><thead><tr><th>CONTA</th><th>QUEM USA</th><th>E-MAIL</th><th>SENHA</th><th></th></tr></thead><tbody>
+  ${linhas.join('')}
   </tbody></table></div>`:'<div class="vazio">Nenhuma conta compartilhada cadastrada.</div>'}`;
 }
 async function renderHistorico(app){
@@ -524,6 +554,7 @@ function atualizaReq(){
   if(!setor){ box.innerHTML='<span class="na">Selecione o setor para ver os acessos necessários.</span>'; return; }
   if(!n){ box.innerHTML='<span class="na">Este setor não tem padrão de acessos definido. Cadastre os acessos manualmente abaixo.</span>'; return; }
   const estado = i => {
+    if(i.comp) return '<span class="ok">✓ Conta compartilhada</span>';
     if(!i.sis) return '<span class="nc">Sistema não cadastrado</span>';
     const l = document.querySelector(`.lin[data-n="${CSS.escape(i.sis.nome)}"]`); if(!l) return '<span class="falta">Criar / liberar</span>';
     const t = l.querySelector('.fTipo').value, v = l.querySelector('.fVal').value;
