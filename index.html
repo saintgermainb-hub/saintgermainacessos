@@ -158,7 +158,7 @@ const PADRAO = [
   {setor:'Líder', tudo:true, chaves:['lider','lideranca']},
   {setor:'Ticket Transporte', sis:TRANSP, chaves:['tickettransporte']},
   {setor:'Torre de Controle', sis:TRANSP, chaves:['torredecontrole'], obs:'mesmo acesso de Ticket Transporte'},
-  {setor:'Trocas & Devoluções', sis:['correios','trocas'], chaves:['trocas&devolucoes','trocasedevolucoes','trocaedevolucao','trocasdevolucoes']},
+  {setor:'Trocas & Devoluções', sis:['trocas'], chaves:['trocas&devolucoes','trocasedevolucoes','trocaedevolucao','trocasdevolucoes']},
   {setor:'Personalizados', sis:['primie','iguacu','repro'], chaves:['personalizados','lentes','suportelentes']},
   {setor:'Marketplace', sis:['ml','tiktok','shopee'], chaves:['marketplace']},
   {setor:'Customer Success', sis:['ra','procon','whatsjur','igsg','iguana'], chaves:['customersuccess','cs']},
@@ -169,14 +169,29 @@ const regraDe = setor => { const n=norm(setor); return PADRAO.find(r=>r.chaves.i
 const achaSis = k => S.sistemas.find(s=>SIS[k].al.includes(norm(s.nome)));
 const achaComp = k => S.compart.find(c=>SIS[k].al.some(a=>norm(c.nome).startsWith(a)));
 // Lista do que o setor precisa: [{nome, sis (cadastrado ou undefined)}]
+// Edições do padrão feitas na aba "Acessos por setor" (salvas para todos) têm prioridade sobre o padrão de fábrica
+const nomeSis = k => SIS[k].nome;
+const todosNomes = () => (S.padraoCfg && S.padraoCfg.dados.__todos) || TODOS.map(nomeSis);
+function regraEfetiva(r){
+  const o = S.padraoCfg && S.padraoCfg.dados[r.setor];
+  return o ? {...r, tudo:!!o.tudo, nomes:o.sis||[], editado:true} : {...r, nomes:(r.sis||[]).map(nomeSis)};
+}
+// Transforma um nome de acesso no item usado na conferência (sistema cadastrado ou conta compartilhada)
+function itemDe(nome){
+  const k = Object.keys(SIS).find(k=>SIS[k].nome===nome);
+  if(k){ const sis=achaSis(k); return {nome, sis, comp:!sis&&achaComp(k)}; }
+  const sis = S.sistemas.find(s=>norm(s.nome)===norm(nome));
+  return {nome, sis, comp:!sis && S.compart.find(c=>norm(c.nome).startsWith(norm(nome)))};
+}
 function necessarios(setor){
-  const r = regraDe(setor); if(!r) return null;
+  const r0 = regraDe(setor); if(!r0) return null;
+  const r = regraEfetiva(r0);
   if(r.tudo){
     const lista = Object.keys(SIS).map(k=>({nome:SIS[k].nome, sis:achaSis(k), comp:!achaSis(k)&&achaComp(k)}));
     S.sistemas.filter(s=>s.ativo && !lista.some(i=>i.sis===s)).forEach(s=>lista.push({nome:s.nome, sis:s}));
     return lista;
   }
-  return [...TODOS, ...r.sis].map(k=>({nome:SIS[k].nome, sis:achaSis(k), comp:!achaSis(k)&&achaComp(k)}));
+  return [...new Set([...todosNomes(), ...r.nomes])].map(itemDe);
 }
 const acessoOk = a => a && a.t!=='na' && (a.t!=='senha' || a.tem || a.v);
 // O que falta criar/liberar numa posição (posições desativadas não contam)
@@ -230,12 +245,17 @@ function bloqueio(tit, txt, link){
 // A ordem dos setores fica num registro interno guardado junto com as contas compartilhadas
 // (assim vale para todos que abrem o Acessos). Esse registro não aparece na lista de contas.
 const CONFIG_ORDEM = '⚙ Ordem dos setores (configuração do sistema)';
+const CONFIG_PADRAO = '⚙ Acessos por setor (configuração do sistema)';
+const ehConfig = c => c.nome===CONFIG_ORDEM || c.nome===CONFIG_PADRAO;
 function aplicar(d){
   S.eu=d.eu; S.sistemas=d.sistemas; S.posicoes=d.posicoes;
   const cfg = (d.compart||[]).find(c=>c.nome===CONFIG_ORDEM);
   let ordem=[]; try{ ordem = cfg ? JSON.parse(cfg.quem||'[]') : []; }catch(_){}
   S.ordemCfg = cfg ? {id:cfg.id, ordem} : {id:'', ordem:[]};
-  S.compart=(d.compart||[]).filter(c=>c.nome!==CONFIG_ORDEM);
+  const cp = (d.compart||[]).find(c=>c.nome===CONFIG_PADRAO);
+  let dados={}; try{ dados = cp ? JSON.parse(cp.quem||'{}') : {}; }catch(_){}
+  S.padraoCfg = {id: cp?cp.id:'', dados};
+  S.compart=(d.compart||[]).filter(c=>!ehConfig(c));
 }
 
 /* ===== Ordem: desativados sempre no final ===== */
@@ -358,13 +378,54 @@ function salvaOrdem(btn){
   });
 }
 function renderPadrao(app){
-  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Ao criar ou editar uma posição, escolha o setor e o sistema mostra o que precisa ser criado ou liberado.</span></div>
-  <div class="tabela"><table><thead><tr><th>SETOR</th><th>ACESSOS</th><th>POSIÇÕES COM ACESSO PENDENTE</th></tr></thead><tbody>
-  <tr><td>Todos</td><td>${TODOS.map(k=>esc(SIS[k].nome)).join(', ')}</td><td></td></tr>
-  ${ordemSetores().map(s=>PADRAO.find(r=>r.setor===s)).filter(Boolean).map(r=>{ const pend=posTime().filter(p=>regraDe(p.setor)===r && faltas(p).length).length;
+  const bt = chave => admin()?`<button class="btn sec min" onclick='editarPadrao(${js(chave)})'>Editar</button>`:'';
+  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Ao criar ou editar uma posição, escolha o setor e o sistema mostra o que precisa ser criado ou liberado. Use "Editar" para mudar os acessos de um setor; a mudança vale para todos.</span></div>
+  <div class="tabela"><table><thead><tr><th>SETOR</th><th>ACESSOS</th><th>POSIÇÕES COM ACESSO PENDENTE</th>${admin()?'<th></th>':''}</tr></thead><tbody>
+  <tr><td>Todos</td><td>${todosNomes().map(esc).join(', ')}</td><td></td>${admin()?`<td>${bt('__todos')}</td>`:''}</tr>
+  ${ordemSetores().map(s=>PADRAO.find(r=>r.setor===s)).filter(Boolean).map(r0=>{ const r=regraEfetiva(r0), pend=posTime().filter(p=>regraDe(p.setor)===r0 && faltas(p).length).length;
     return `<tr><td>${esc(r.setor)}${r.obs?`<br><small style="color:var(--g2)">${esc(r.obs)}</small>`:''}</td>
-    <td>${r.tudo?'Acesso a tudo':(r.sis.length?'Todos + '+r.sis.map(k=>esc(SIS[k].nome)).join(', '):'Somente o acesso de todos')}</td><td>${pend||'—'}</td></tr>`;}).join('')}
+    <td>${r.tudo?'Acesso a tudo':(r.nomes.length?'Todos + '+r.nomes.map(esc).join(', '):'Somente o acesso de todos')}</td><td>${pend||'—'}</td>${admin()?`<td>${bt(r.setor)}</td>`:''}</tr>`;}).join('')}
   </tbody></table></div>`;
+}
+// Edição do padrão de um setor (ou do "Todos")
+let padraoTemp=null;
+function opcoesAcesso(extra){
+  const nomes = Object.keys(SIS).map(nomeSis);
+  S.sistemas.filter(s=>s.ativo && !Object.keys(SIS).some(k=>SIS[k].al.includes(norm(s.nome)))).forEach(s=>nomes.push(s.nome));
+  (extra||[]).forEach(n=>{ if(!nomes.some(x=>norm(x)===norm(n))) nomes.push(n); });
+  return nomes;
+}
+function editarPadrao(chave){
+  const todos = chave==='__todos', r0 = todos?null:PADRAO.find(r=>r.setor===chave), r = todos?null:regraEfetiva(r0);
+  padraoTemp = {chave, tudo: r?r.tudo:false, sel: todos?[...todosNomes()]:[...r.nomes]};
+  desenhaPadrao();
+}
+function desenhaPadrao(){
+  const t=padraoTemp, todos=t.chave==='__todos', base=todos?[]:todosNomes();
+  const ops = opcoesAcesso(t.sel).filter(n=>!base.includes(n));
+  abrir(`<h3>ACESSOS · ${esc(todos?'TODOS':t.chave.toUpperCase())}</h3><div class="corpo">
+    <p style="color:var(--g2)">${todos?'Acessos que todas as posições precisam ter.':'Além dos acessos de todos ('+base.map(esc).join(', ')+'), marque o que este setor precisa.'}</p>
+    ${todos?'':`<label class="ck"><input type="checkbox" id="pTudo" ${t.tudo?'checked':''} onchange="padraoTemp.tudo=this.checked;desenhaPadrao()"> Acesso a tudo</label>`}
+    ${t.tudo?'':`<div class="req" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${ops.map(n=>`<label class="ck"><input type="checkbox" data-n="${esc(n)}" ${t.sel.includes(n)?'checked':''} onchange="marcaPadrao(this)"> ${esc(n)}</label>`).join('')}</div>
+    <div style="display:flex;gap:8px"><input id="pNovo" placeholder="Outro acesso (ex.: nova plataforma)"><button class="btn sec min" onclick="novoPadrao()">Incluir</button></div>`}
+  </div><div class="rodape"><button class="btn sec" onclick="padraoFabrica(this)">Voltar ao padrão original</button><span style="flex:1"></span><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvaPadrao(this)">Salvar</button></div>`);
+}
+function marcaPadrao(el){ const n=el.dataset.n, s=padraoTemp.sel; if(el.checked){ if(!s.includes(n)) s.push(n); } else padraoTemp.sel=s.filter(x=>x!==n); }
+function novoPadrao(){ const n=$('pNovo').value.trim(); if(!n) return; if(!padraoTemp.sel.some(x=>norm(x)===norm(n))) padraoTemp.sel.push(n); desenhaPadrao(); }
+async function gravaPadrao(btn, dados, log){
+  await salvando(btn, async () => {
+    const r = await run('salvarCompart', {id:S.padraoCfg.id||'', nome:CONFIG_PADRAO, quem:JSON.stringify(dados), email:''}, [log]);
+    S.padraoCfg = {id:r.id, dados}; fechar(); render(); toast('Acessos do setor salvos para todos');
+  });
+}
+function salvaPadrao(btn){
+  const t=padraoTemp, dados={...S.padraoCfg.dados};
+  if(t.chave==='__todos') dados.__todos=[...t.sel]; else dados[t.chave]={tudo:t.tudo, sis:t.tudo?[]:[...t.sel]};
+  gravaPadrao(btn, dados, {acao:'Alterou acessos do setor', alvo:(t.chave==='__todos'?'Todos':t.chave)+': '+(t.tudo?'acesso a tudo':t.sel.join(', '))});
+}
+function padraoFabrica(btn){
+  const t=padraoTemp, dados={...S.padraoCfg.dados}; delete dados[t.chave];
+  gravaPadrao(btn, dados, {acao:'Voltou acessos do setor ao padrão original', alvo:t.chave==='__todos'?'Todos':t.chave});
 }
 function listaFaltas(id){
   const p = S.posicoes.find(x=>x.id===id), f = faltas(p);
@@ -646,8 +707,9 @@ function importar(ev){
     if(!pos.length && !comp.length){ toast('Nenhuma linha encontrada no arquivo'); return; }
     // a importação substitui as contas compartilhadas: mantém o registro da ordem dos setores
     if(S.ordemCfg.ordem.length) comp.push({nome:CONFIG_ORDEM, quem:JSON.stringify(S.ordemCfg.ordem), email:'', senha:''});
+    if(Object.keys(S.padraoCfg.dados).length) comp.push({nome:CONFIG_PADRAO, quem:JSON.stringify(S.padraoCfg.dados), email:'', senha:''});
     abrir(`<h3>IMPORTAR PLANILHA</h3><div class="corpo">
-      <p>Encontrei <b>${pos.length}</b> posições e <b>${comp.filter(c=>c.nome!==CONFIG_ORDEM).length}</b> contas compartilhadas${novosSis.length?` e <b>${novosSis.length}</b> sistema(s) novo(s): ${esc(novosSis.join(', '))}`:''}.</p>
+      <p>Encontrei <b>${pos.length}</b> posições e <b>${comp.filter(c=>!ehConfig(c)).length}</b> contas compartilhadas${novosSis.length?` e <b>${novosSis.length}</b> sistema(s) novo(s): ${esc(novosSis.join(', '))}`:''}.</p>
       ${S.posicoes.length||S.compart.length?'<p style="color:var(--g2)">Atenção: a importação substitui as posições e contas que já estão no sistema. Sua planilha original não é alterada.</p>':''}
     </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" id="btnImp">Importar</button></div>`);
     $('btnImp').onclick = () => salvando($('btnImp'), async () => { const d = await run('importar', pos, comp, novosSis); aplicar(d); S.visiveis={}; S.cache={}; fechar(); render(); toast(`Importado: ${pos.length} posições e ${S.compart.length} contas compartilhadas`); });
