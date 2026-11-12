@@ -65,6 +65,7 @@ main{padding:24px 28px;max-width:1300px;margin:0 auto}
 .req{background:var(--fundo);border:1px solid var(--linha);border-radius:4px;padding:12px 14px;display:grid;gap:6px}
 .req .r{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
 .req .ok{color:var(--g2);font-size:12px}.req .falta{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--preto);color:#fff;white-space:nowrap}.req .nc{font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid var(--g3);color:var(--g2);white-space:nowrap}
+.lin.esc{display:none}
 .lin.nec>span:first-child{color:var(--preto)}.lin.nec>span:first-child::after{content:' · necessário';color:var(--g2);font-size:11px}
 .aviso button{background:#fff;color:var(--preto);border:0;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px}
 ul.plat{list-style:none}
@@ -329,7 +330,7 @@ function linhaAcesso(p, s){
     }
   }else if(a.t==='google') val='<span class="via">Acesso pelo Google</span>';
   else if(a.t==='frete') val='<span class="via">Acesso pelo FreteBarato</span>';
-  else val='<span class="na">Não se aplica</span>';
+  else return ''; // "Não se aplica" não aparece no card
   return `<li class="${s.ativo?'':'off'}"><span class="nome">${esc(s.nome)}</span>${val}<div class="acoes">${s.ativo?'':'<span class="tag off">Desativado</span>'}${bts}</div></li>`;
 }
 function render(){
@@ -602,7 +603,10 @@ async function gravarPos(p, logs){
   if(i>=0) S.posicoes[i]=r; else S.posicoes.push(r);
   Object.keys(S.visiveis).filter(k=>k.startsWith(r.id+'|')).forEach(k=>delete S.visiveis[k]); delete S.cache[r.id];
 }
+// Na edição, só aparecem os sistemas do setor e os já preenchidos; os demais ficam em "Mostrar outros sistemas"
+let verOutros=false;
 function editar(id){
+  verOutros=false;
   const p = id ? S.posicoes.find(x=>x.id===id) : {setor:'',equipe:'',resp:'',status:'ativo',email:'',acessos:{}};
   const op = (v,l,a) => `<option value="${esc(v)}" ${a===v?'selected':''}>${esc(l)}</option>`;
   const linha = s => { const a=(p.acessos||{})[s.nome]||{t:'vazio'}; return `<div class="lin ${s.ativo?'':'off'}" data-n="${esc(s.nome)}" data-tem="${a.t==='senha'&&a.tem?1:''}"><span>${esc(s.nome)}${s.ativo?'':' (desativado)'}</span>
@@ -619,6 +623,7 @@ function editar(id){
     <div class="req" id="reqSetor"></div>
     <div class="sep">ACESSOS · deixe a senha em branco para manter a atual</div>
     ${sistemasOrdenados().map(linha).join('')}
+    <button class="btn sec min" id="bOutros" style="justify-self:start;display:none" onclick="verOutros=!verOutros;atualizaReq()"></button>
     ${admin()?'<button class="btn sec min" style="justify-self:start" onclick="fechar();novoSistema()">+ Incluir outro sistema</button>':''}
   </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvar(${js(id||'')},this)'>Salvar</button></div>`);
   document.querySelectorAll('.fTipo,.fVal').forEach(el => el.addEventListener(el.tagName==='SELECT'?'change':'input', atualizaReq));
@@ -635,7 +640,14 @@ function atualizaReq(){
   const box = $('reqSetor'); if(!box) return;
   const setor = $('fSetor').value.trim(), n = setor ? necessarios(setor) : null;
   const nomesNec = new Set((n||[]).filter(i=>i.sis).map(i=>i.sis.nome));
-  document.querySelectorAll('.lin[data-n]').forEach(l => l.classList.toggle('nec', nomesNec.has(l.dataset.n)));
+  let ocultos=0;
+  document.querySelectorAll('.lin[data-n]').forEach(l => {
+    const nec = nomesNec.has(l.dataset.n), t = l.querySelector('.fTipo').value, v = l.querySelector('.fVal').value;
+    const esc = !!n && !nec && (t==='vazio'||t==='na') && !v && !verOutros;
+    l.classList.toggle('nec', nec); l.classList.toggle('esc', esc);
+    if(!!n && !nec && (t==='vazio'||t==='na') && !v) ocultos++;
+  });
+  const bo=$('bOutros'); if(bo){ bo.style.display = ocultos ? '' : 'none'; bo.textContent = verOutros ? 'Esconder sistemas fora do setor' : `Mostrar outros sistemas (${ocultos})`; }
   if(!setor){ box.innerHTML='<span class="na">Selecione o setor para ver os acessos necessários.</span>'; return; }
   if(!n){ box.innerHTML='<span class="na">Este setor não tem padrão de acessos definido. Cadastre os acessos manualmente abaixo.</span>'; return; }
   const estado = i => {
