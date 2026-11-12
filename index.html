@@ -37,6 +37,13 @@ main{padding:24px 28px;max-width:1300px;margin:0 auto}
 .resumo div.dest{background:var(--preto);border-color:var(--preto);color:#fff}.resumo div.dest small{color:var(--g3)}
 .resumo small{color:var(--g2);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
 .resumo b{display:block;font-weight:400;font-size:26px;margin-top:4px}
+.resumo div[data-f]{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.resumo div[data-f]:hover{border-color:var(--g2)}
+.resumo div[data-f].sel{border-color:var(--preto);box-shadow:inset 0 -3px 0 var(--preto)}
+.resumo div.dest[data-f].sel{box-shadow:inset 0 -3px 0 var(--g3)}
+.filtrando{display:flex;align-items:center;gap:12px;margin:-8px 0 18px;color:var(--g2);font-size:13px;letter-spacing:.04em}
+.filtrando b{color:var(--preto);font-weight:400}
+.filtrando button{background:none;border:0;border-bottom:1px solid var(--g2);padding:0;color:var(--g1,#414142);cursor:pointer}
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
 .card{background:#fff;border:1px solid var(--linha);border-radius:6px;overflow:hidden}
 .card.alerta{border-color:var(--preto)}
@@ -202,7 +209,21 @@ function faltas(p){
 }
 
 const S = { token:'', eu:null, sistemas:[], posicoes:[], compart:[], hist:[], visiveis:{}, cache:{}, carregando:'' };
-let aba='posicoes', busca='', filtroSetor='', filtroEquipe='';
+let aba='posicoes', busca='', filtroSetor='', filtroEquipe='', filtroCard='';
+// Cards do resumo clicáveis: cada um filtra a lista de posições logo abaixo (clicar de novo limpa)
+const FILTROS_CARD = {
+  time:   {nome:'Total do time hoje', ok:p=>(p.status==='ativo'||p.status==='trein') && String(p.resp||'').trim()},
+  ativas: {nome:'Posições ativas',    ok:p=>p.status!=='off'},
+  vagas:  {nome:'Vagas abertas',      ok:p=>p.status==='vaga'},
+  trein:  {nome:'Em treinamento',     ok:p=>p.status==='trein'},
+  off:    {nome:'Desativadas',        ok:p=>p.status==='off'},
+  senhas: {nome:'Senhas a trocar',    ok:p=>(p.trocar||[]).length>0},
+  pend:   {nome:'Acessos pendentes',  ok:p=>faltas(p).length>0}
+};
+function filtrarCard(f){
+  filtroCard = filtroCard===f ? '' : f; render();
+  const g = document.querySelector('.grade, .vazio'); if(filtroCard && g) g.scrollIntoView({behavior:'smooth', block:'start'});
+}
 
 /* ===== Utilidades ===== */
 const $ = id => document.getElementById(id);
@@ -326,7 +347,7 @@ function cardPos(p){ return `
     </div>`; }
 function renderPosicoes(app){
   const presentes = new Set(posTime().map(p=>grupo(p.setor))), setores = ordemSetores().filter(s=>presentes.has(s));
-  const lista = posicoesOrdenadas().filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe) && (!busca||(p.setor+' '+(p.resp||'')+' '+(p.email||'')).toLowerCase().includes(busca.toLowerCase())));
+  const lista = posicoesOrdenadas().filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe) && (!busca||(p.setor+' '+(p.resp||'')+' '+(p.email||'')).toLowerCase().includes(busca.toLowerCase())) && (!filtroCard||FILTROS_CARD[filtroCard].ok(p)));
   // Resumo acompanha os filtros de setor e equipe (sem filtro = time todo)
   const base = posTime().filter(p => (!filtroSetor||grupo(p.setor)===filtroSetor) && (!filtroEquipe||(p.equipe||'')===filtroEquipe));
   const cont = st => base.filter(p=>p.status===st).length, pend = base.reduce((s,p)=>s+(p.trocar||[]).length,0);
@@ -334,17 +355,20 @@ function renderPosicoes(app){
   const conta = l => l.filter(p=>(p.status==='ativo'||p.status==='trein') && String(p.resp||'').trim()).length;
   const totalTime = conta(posTime()), filtrado = filtroSetor||filtroEquipe;
   const aCriar = base.reduce((s,p)=>s+faltas(p).length,0);
+  const sel = f => filtroCard===f ? 'sel' : '';
+  const clk = f => `data-f="${f}" role="button" tabindex="0" title="Ver ${esc(FILTROS_CARD[f].nome.toLowerCase())}" onclick="filtrarCard('${f}')" onkeydown="if(event.key==='Enter')filtrarCard('${f}')"`;
   app.innerHTML = `
   <div class="resumo">
-    <div class="dest"><small>Total do time hoje</small><b>${totalTime}</b></div>
-    ${filtrado?`<div><small>${filtroSetor?'Pessoas no setor':'Pessoas na equipe'}</small><b>${conta(base)}</b></div>`:''}
-    <div><small>Posições ativas</small><b>${base.length-cont('off')}</b></div>
-    <div><small>Vagas abertas</small><b>${cont('vaga')}</b></div>
-    <div><small>Em treinamento</small><b>${cont('trein')}</b></div>
-    <div><small>Desativadas</small><b>${cont('off')}</b></div>
-    <div><small>Senhas a trocar</small><b>${pend}</b></div>
-    <div><small>Acessos pendentes</small><b>${aCriar}</b></div>
+    <div class="dest ${sel('time')}" ${clk('time')}><small>Total do time hoje</small><b>${totalTime}</b></div>
+    ${filtrado?`<div class="${sel('time')}" ${clk('time')}><small>${filtroSetor?'Pessoas no setor':'Pessoas na equipe'}</small><b>${conta(base)}</b></div>`:''}
+    <div class="${sel('ativas')}" ${clk('ativas')}><small>Posições ativas</small><b>${base.length-cont('off')}</b></div>
+    <div class="${sel('vagas')}" ${clk('vagas')}><small>Vagas abertas</small><b>${cont('vaga')}</b></div>
+    <div class="${sel('trein')}" ${clk('trein')}><small>Em treinamento</small><b>${cont('trein')}</b></div>
+    <div class="${sel('off')}" ${clk('off')}><small>Desativadas</small><b>${cont('off')}</b></div>
+    <div class="${sel('senhas')}" ${clk('senhas')}><small>Senhas a trocar</small><b>${pend}</b></div>
+    <div class="${sel('pend')}" ${clk('pend')}><small>Acessos pendentes</small><b>${aCriar}</b></div>
   </div>
+  ${filtroCard?`<div class="filtrando">Mostrando: <b>${esc(FILTROS_CARD[filtroCard].nome)}</b> · ${lista.length} posição(ões)<button onclick="filtrarCard('${filtroCard}')">Limpar filtro</button></div>`:''}
   <div class="barra">
     <input id="busca" placeholder="Buscar setor, pessoa ou e-mail" value="${esc(busca)}">
     <select id="fSet"><option value="">Todos os setores</option>${setores.map(s=>`<option ${s===filtroSetor?'selected':''}>${esc(s)}</option>`).join('')}</select>
@@ -354,7 +378,7 @@ function renderPosicoes(app){
     ${admin()?`<button class="btn sec" onclick="$('arquivo').click()">Importar planilha (CSV)</button>`:''}
     <button class="btn" onclick="editar()">+ Nova posição</button>
   </div>
-  ${lista.length?`<div class="grade">${lista.map(cardPos).join('')}</div>`:`<div class="vazio">${posTime().length?'Nenhuma posição encontrada.':'Nenhuma posição cadastrada ainda.'+(admin()?' Use "Importar planilha (CSV)" para trazer a planilha ACESSOS SG!.':'')}</div>`}`;
+  ${lista.length?`<div class="grade">${lista.map(cardPos).join('')}</div>`:`<div class="vazio">${posTime().length?(filtroCard?`Nenhuma posição em ${esc(FILTROS_CARD[filtroCard].nome.toLowerCase())}.`:'Nenhuma posição encontrada.'):'Nenhuma posição cadastrada ainda.'+(admin()?' Use "Importar planilha (CSV)" para trazer a planilha ACESSOS SG!.':'')}</div>`}`;
   const b=$('busca'); b.oninput=()=>{ busca=b.value; render(); const n=$('busca'); n.focus(); n.setSelectionRange(n.value.length,n.value.length); };
   $('fSet').onchange=e=>{ filtroSetor=e.target.value; render(); };
   $('fEq').onchange=e=>{ filtroEquipe=e.target.value; render(); };
