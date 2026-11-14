@@ -99,8 +99,14 @@ tr.off td{color:var(--g3)}
 .corpo label.ck{display:flex;align-items:center;gap:8px;color:var(--preto);font-size:13px}
 .corpo label.ck input{width:auto}
 .corpo input,.corpo select{border:1px solid var(--linha);padding:9px 10px;border-radius:4px;width:100%}
-.lin{display:grid;grid-template-columns:110px 140px 1fr;gap:8px;align-items:center}
+.lin{display:grid;grid-template-columns:110px 130px 1fr 1fr;gap:8px;align-items:center}
 .lin.off span{color:var(--g3)}
+.senhas-grupo{border:1px solid var(--linha);border-radius:4px;padding:10px 14px;display:grid;gap:6px}
+.senhas-grupo .sub{display:grid;gap:4px;padding-left:24px}
+.senhas-grupo .sub label.ck{color:var(--g1);font-size:12px}
+a.lnk{color:inherit;text-decoration:none;border-bottom:1px solid var(--g3)}a.lnk:hover{color:var(--preto);border-color:var(--preto)}
+a.lnk .seta{font-size:10px;margin-left:3px;color:var(--g2)}
+.restrita{color:var(--g3);font-size:12px;letter-spacing:.04em}
 .sep{font-size:11px;letter-spacing:.12em;color:var(--g2);border-top:1px solid var(--linha);padding-top:12px}
 .rodape{padding:14px 20px;border-top:1px solid var(--linha);display:flex;justify-content:flex-end;gap:8px}
 .check li,.hist li{list-style:none;display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linha);font-size:13px}
@@ -128,6 +134,7 @@ tr.off td{color:var(--g3)}
   <button data-aba="sistemas">SISTEMAS</button>
   <button data-aba="compart">CONTAS COMPARTILHADAS</button>
   <button data-aba="historico">HISTÓRICO</button>
+  <button data-aba="senhas" id="abaSenhas" hidden>QUEM VÊ SENHAS</button>
 </nav>
 <main id="app"><div class="bloqueio">Carregando…</div></main>
 
@@ -268,7 +275,9 @@ function bloqueio(tit, txt, link){
 // (assim vale para todos que abrem o Acessos). Esse registro não aparece na lista de contas.
 const CONFIG_ORDEM = '⚙ Ordem dos setores (configuração do sistema)';
 const CONFIG_PADRAO = '⚙ Acessos por setor (configuração do sistema)';
-const ehConfig = c => c.nome===CONFIG_ORDEM || c.nome===CONFIG_PADRAO;
+const CONFIG_SENHAS = '⚙ Quem vê senhas (configuração do sistema)';
+const CONFIG_LINKS = '⚙ Links de acesso (configuração do sistema)';
+const ehConfig = c => c.nome===CONFIG_ORDEM || c.nome===CONFIG_PADRAO || c.nome===CONFIG_SENHAS || c.nome===CONFIG_LINKS;
 function aplicar(d){
   S.eu=d.eu; S.sistemas=d.sistemas; S.posicoes=d.posicoes;
   const cfg = (d.compart||[]).find(c=>c.nome===CONFIG_ORDEM);
@@ -277,7 +286,55 @@ function aplicar(d){
   const cp = (d.compart||[]).find(c=>c.nome===CONFIG_PADRAO);
   let dados={}; try{ dados = cp ? JSON.parse(cp.quem||'{}') : {}; }catch(_){}
   S.padraoCfg = {id: cp?cp.id:'', dados};
+  const cs = (d.compart||[]).find(c=>c.nome===CONFIG_SENHAS);
+  let lib={}; try{ lib = cs ? JSON.parse(cs.quem||'{}') : {}; }catch(_){}
+  S.senhasCfg = {id: cs?cs.id:'', dados:lib};
+  const cl = (d.compart||[]).find(c=>c.nome===CONFIG_LINKS);
+  let lk={}; try{ lk = cl ? JSON.parse(cl.quem||'{}') : {}; }catch(_){}
+  S.linksCfg = {id: cl?cl.id:'', dados:{sis:lk.sis||{}, comp:lk.comp||{}}};
   S.compart=(d.compart||[]).filter(c=>!ehConfig(c));
+}
+/* ===== Quem vê senhas =====
+   Coordenação (administração) vê todas. Supervisão e equipe veem os acessos de todas as posições,
+   mas só veem/copiam a SENHA do que a coordenação liberou em "Quem vê senhas".
+   Sem liberação = nenhuma senha visível. */
+const libDe = login => (S.senhasCfg && S.senhasCfg.dados[login]) || {setores:[], pos:[], comp:[]};
+function podeVerSenha(tipo, id){
+  if(admin()) return true;
+  const l = libDe(S.eu && S.eu.login);
+  if(tipo==='c') return (l.comp||[]).includes(id);
+  const p = S.posicoes.find(x=>x.id===id); if(!p) return false;
+  return (l.pos||[]).includes(id) || (!ehCompart(p) && (l.setores||[]).includes(grupo(p.setor)));
+}
+const RESTRITA = '<span class="restrita">Senha restrita</span>';
+/* ===== Links de acesso =====
+   Cada sistema (J&T, Correios, Bling...) e cada conta compartilhada pode ter o link de onde se faz o login.
+   Fica salvo no servidor e vale para todos; o nome vira link clicável nos cards e tabelas. */
+function normUrl(u){ u = String(u||'').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://'+u.replace(/^\/+/,''); return u; }
+const linkSis = s => s ? (S.linksCfg.dados.sis[s.id] || '') : '';
+const linkComp = c => c ? (S.linksCfg.dados.comp[c.id] || '') : '';
+const hostDe = u => { try{ return new URL(u).host.replace(/^www\./,''); }catch(_){ return u; } };
+function comLink(textoHtml, url){
+  if(!url || !/^https?:\/\//i.test(url)) return textoHtml;
+  return `<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="Abrir ${esc(url)}">${textoHtml}<span class="seta">↗</span></a>`;
+}
+async function gravaLinksSis(mapa){ // mapa: {idSistema: url}
+  const dados = {sis:{...S.linksCfg.dados.sis}, comp:{...S.linksCfg.dados.comp}}, logs=[];
+  Object.entries(mapa).forEach(([id,url]) => { if((dados.sis[id]||'')===url) return;
+    const s = S.sistemas.find(x=>x.id===id); if(url) dados.sis[id]=url; else delete dados.sis[id];
+    logs.push({acao: url?'Alterou link de acesso':'Removeu link de acesso', alvo:(s?s.nome:id)+(url?' · '+url:'')}); });
+  if(!logs.length) return;
+  const r = await run('salvarCompart', {id:S.linksCfg.id||'', nome:CONFIG_LINKS, quem:JSON.stringify(dados), email:''}, logs);
+  S.linksCfg = {id:r.id, dados};
+}
+async function gravaLink(tipo, id, url, alvo){
+  const atual = (S.linksCfg.dados[tipo]||{})[id] || '';
+  if(atual === url) return;
+  const dados = {sis:{...S.linksCfg.dados.sis}, comp:{...S.linksCfg.dados.comp}};
+  if(url) dados[tipo][id] = url; else delete dados[tipo][id];
+  const r = await run('salvarCompart', {id:S.linksCfg.id||'', nome:CONFIG_LINKS, quem:JSON.stringify(dados), email:''},
+    [{acao: url?'Alterou link de acesso':'Removeu link de acesso', alvo: alvo + (url?' · '+url:'')}]);
+  S.linksCfg = {id:r.id, dados};
 }
 
 /* ===== Ordem: desativados sempre no final ===== */
@@ -325,18 +382,23 @@ function linhaAcesso(p, s){
     if(!a.tem) val='<span class="na">Senha não cadastrada</span>';
     else{
       const v = S.visiveis[chave], car = S.carregando===chave;
+      if(!podeVerSenha('p', p.id)) val = RESTRITA;
+      else{
       val = `<span class="senha ${v!==undefined?'':'oculta'} ${pend?'pendente':''}">${v!==undefined?esc(v):car?'buscando…':'••••••••'}</span>`;
       bts = `<button class="ic ${car?'girando':''}" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`;
+      }
     }
   }else if(a.t==='google') val='<span class="via">Acesso pelo Google</span>';
   else if(a.t==='frete') val='<span class="via">Acesso pelo FreteBarato</span>';
   else return ''; // "Não se aplica" não aparece no card
-  return `<li class="${s.ativo?'':'off'}"><span class="nome">${esc(s.nome)}</span>${val}<div class="acoes">${s.ativo?'':'<span class="tag off">Desativado</span>'}${bts}</div></li>`;
+  return `<li class="${s.ativo?'':'off'}"><span class="nome">${comLink(esc(s.nome), linkSis(s))}</span>${val}<div class="acoes">${s.ativo?'':'<span class="tag off">Desativado</span>'}${bts}</div></li>`;
 }
 function render(){
   $('abas').hidden = false;
+  $('abaSenhas').hidden = !admin();
+  if(aba==='senhas' && !admin()) aba='posicoes';
   $('quem').textContent = (S.eu.nome||'') + ' · ' + (admin()?'Administração':'Equipe');
-  ({posicoes:renderPosicoes, padrao:renderPadrao, sistemas:renderSistemas, compart:renderCompart, historico:renderHistorico})[aba]($('app'));
+  ({posicoes:renderPosicoes, padrao:renderPadrao, sistemas:renderSistemas, compart:renderCompart, historico:renderHistorico, senhas:renderSenhas})[aba]($('app'));
 }
 function cardPos(p){ return `
     <div class="card ${(p.trocar||[]).length?'alerta':''} ${p.status==='off'?'off':''}">
@@ -463,17 +525,17 @@ function renderSistemas(app){
   const faltando = Object.keys(SIS).filter(k=>!achaSis(k) && !achaComp(k));
   app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Sistemas desativados continuam guardados e vão automaticamente para o final da lista.</span><span class="esp"></span>${admin()?'<button class="btn" onclick="novoSistema()">+ Novo sistema</button>':''}</div>
   ${admin()&&faltando.length?`<div class="req" style="margin-bottom:20px"><div class="r"><span style="color:var(--g2)">Sistemas do padrão por setor que ainda não estão cadastrados</span></div>${faltando.map(k=>`<div class="r"><span>${esc(SIS[k].nome)}</span><button class="btn sec min" onclick='incluirPadrao(${js(SIS[k].nome)},this)'>Incluir</button></div>`).join('')}</div>`:''}
-  <div class="tabela"><table><thead><tr><th>SISTEMA</th><th>SITUAÇÃO</th><th>POSIÇÕES COM ACESSO</th>${admin()?'<th></th>':''}</tr></thead><tbody>
-  ${sistemasOrdenados().map(s=>`<tr class="${s.ativo?'':'off'}"><td>${esc(s.nome)}</td><td>${s.ativo?'<span class="tag ativo">Ativo</span>':'<span class="tag off">Desativado</span>'}</td>
+  <div class="tabela"><table><thead><tr><th>SISTEMA</th><th>LINK DE ACESSO</th><th>SITUAÇÃO</th><th>POSIÇÕES COM ACESSO</th>${admin()?'<th></th>':''}</tr></thead><tbody>
+  ${sistemasOrdenados().map(s=>`<tr class="${s.ativo?'':'off'}"><td>${esc(s.nome)}</td><td>${linkSis(s)?comLink(esc(hostDe(linkSis(s))), linkSis(s)):'<span class="na">Sem link</span>'}</td><td>${s.ativo?'<span class="tag ativo">Ativo</span>':'<span class="tag off">Desativado</span>'}</td>
   <td>${S.posicoes.filter(p=>(p.acessos||{})[s.nome]).length}</td>
-  ${admin()?`<td><div class="acoes"><button class="btn sec min" onclick='renomearSistema(${js(s.id)})'>Renomear</button><button class="btn ${s.ativo?'sec':''} min" onclick='alternarSistema(${js(s.id)},this)'>${s.ativo?'Desativar':'Reativar'}</button></div></td>`:''}</tr>`).join('')}
+  ${admin()?`<td><div class="acoes"><button class="btn sec min" onclick='renomearSistema(${js(s.id)})'>Editar</button><button class="btn ${s.ativo?'sec':''} min" onclick='alternarSistema(${js(s.id)},this)'>${s.ativo?'Desativar':'Reativar'}</button></div></td>`:''}</tr>`).join('')}
   </tbody></table></div>`;
 }
 function renderCompart(app){
   // Linhas das contas compartilhadas cadastradas aqui
-  const linhasC = S.compart.map(c=>{const k='c|'+c.id,v=S.visiveis[k];return `<tr><td>${esc(c.nome)}</td><td>${esc(c.quem)||'<span class="na">—</span>'}</td><td>${esc(c.email)||'<span class="na">—</span>'}</td>
-  <td>${c.tem?`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):'••••••••'}</span>`:'<span class="na">Não cadastrada</span>'}</td>
-  <td><div class="acoes">${c.tem?`<button class="ic" title="Mostrar senha" onclick='mostrar("c",${js(c.id)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("c",${js(c.id)})'>${copia}</button>`:''}<button class="ic" title="Editar" onclick='editarC(${js(c.id)})'>${lapis}</button></div></td></tr>`});
+  const linhasC = S.compart.map(c=>{const k='c|'+c.id,v=S.visiveis[k];return `<tr><td>${comLink(esc(c.nome), linkComp(c))}</td><td>${esc(c.quem)||'<span class="na">—</span>'}</td><td>${esc(c.email)||'<span class="na">—</span>'}</td>
+  <td>${!c.tem?'<span class="na">Não cadastrada</span>':!podeVerSenha('c',c.id)?RESTRITA:`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):'••••••••'}</span>`}</td>
+  <td><div class="acoes">${c.tem&&podeVerSenha('c',c.id)?`<button class="ic" title="Mostrar senha" onclick='mostrar("c",${js(c.id)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("c",${js(c.id)})'>${copia}</button>`:''}<button class="ic" title="Editar" onclick='editarC(${js(c.id)})'>${lapis}</button></div></td></tr>`});
   // Linhas dos acessos de plataforma (Mercado Livre, Shope, TikTok, Gmail, Meta) no mesmo padrão
   const ordem=['mercadolivre','shope','shopee','tiktok','gmail','meta'];
   const plat = S.posicoes.filter(ehCompart).sort((a,b)=>ordem.indexOf(norm(a.setor))-ordem.indexOf(norm(b.setor)));
@@ -483,11 +545,12 @@ function renderCompart(app){
       const a = s ? p.acessos[s.nome] : null, k = s ? p.id+'|'+s.nome : '', v = s ? S.visiveis[k] : undefined, car = S.carregando===k;
       const conta = esc(p.setor) + (s && acs.length>1 ? ` · ${esc(s.nome)}` : '');
       let senha='<span class="na">Não cadastrada</span>', bts='';
-      if(a && a.t==='senha' && a.tem){ senha=`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):car?'buscando…':'••••••••'}</span>`;
+      if(a && a.t==='senha' && a.tem && !podeVerSenha('p', p.id)) senha=RESTRITA;
+      else if(a && a.t==='senha' && a.tem){ senha=`<span class="senha ${v!==undefined?'':'oculta'}">${v!==undefined?esc(v):car?'buscando…':'••••••••'}</span>`;
         bts=`<button class="ic ${car?'girando':''}" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`; }
       else if(a && a.t==='google') senha='<span class="via">Acesso pelo Google</span>';
       else if(a && a.t==='frete') senha='<span class="via">Acesso pelo FreteBarato</span>';
-      return `<tr><td>${conta}</td><td>${esc(p.resp)||'<span class="na">—</span>'}</td><td>${esc(p.email)||'<span class="na">—</span>'}</td><td>${senha}</td>
+      return `<tr><td>${comLink(conta, linkSis(s))}</td><td>${esc(p.resp)||'<span class="na">—</span>'}</td><td>${esc(p.email)||'<span class="na">—</span>'}</td><td>${senha}</td>
       <td><div class="acoes">${bts}<button class="ic" title="Editar" onclick='editar(${js(p.id)})'>${lapis}</button></div></td></tr>`;
     };
     return acs.length ? acs.map(linha) : [linha(null)];
@@ -505,6 +568,71 @@ async function renderHistorico(app){
   app.innerHTML = S.hist.length?`<div class="tabela"><table><thead><tr><th>QUANDO</th><th>QUEM</th><th>AÇÃO</th><th>ONDE</th></tr></thead><tbody>${S.hist.map(h=>`<tr><td>${esc(h.quando)}</td><td>${esc(h.quem)}</td><td>${esc(h.acao)}</td><td>${esc(h.alvo)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="vazio">Nenhuma ação registrada ainda.</div>';
 }
 
+/* ===== Tela "Quem vê senhas" (só coordenação) ===== */
+const SC_API = 'https://script.google.com/macros/s/AKfycbyWR9ceeCuNbgk_yjyzn-8mCQwCgpSVpFrn3gvsS2HGniMxP14pNNmVIRXLGqP8_F3g/exec'; // servidor do Saint Center (lista de pessoas)
+let pessoasSC = null, libTemp = null;
+async function carregaPessoasSC(){
+  const r = await fetch(SC_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:'listarPessoas',args:[S.token]})});
+  const j = await r.json(); if(!j.ok) throw new Error(j.erro||'Não foi possível carregar as pessoas do Saint Center.');
+  return j.resultado.filter(p=>p.ativo && p.perms && p.perms.acessos);
+}
+function resumoLib(l){
+  const n = (l.setores||[]).length, q = (l.pos||[]).length, c = (l.comp||[]).length;
+  if(!n && !q && !c) return '<span class="na">Nenhuma senha liberada</span>';
+  return [n?`Setores: ${(l.setores||[]).map(esc).join(', ')}`:'', q?`${q} posição(ões) avulsa(s)`:'', c?`${c} conta(s) compartilhada(s)`:''].filter(Boolean).join(' · ');
+}
+async function renderSenhas(app){
+  if(!pessoasSC){
+    app.innerHTML = '<div class="vazio">Carregando pessoas do Saint Center…</div>';
+    try{ pessoasSC = await carregaPessoasSC(); }catch(e){ app.innerHTML=`<div class="vazio">${esc(e.message)}</div>`; return; }
+    if(aba!=='senhas') return;
+  }
+  const lin = pessoasSC.map(p=>{
+    const adm = p.perms.acessos==='admin';
+    return `<tr><td>${esc(p.nome)}</td><td>${esc(p.cargo)||'<span class="na">—</span>'}</td>
+    <td>${adm?'<span class="via">Administração · vê todas as senhas</span>':resumoLib(libDe(p.login))}</td>
+    <td>${adm?'':`<button class="btn sec min" onclick='editarLib(${js(p.login)})'>Liberar senhas</button>`}</td></tr>`; });
+  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Todos com acesso ao módulo veem as posições e os acessos. A <b>senha</b> só aparece para o que você liberar aqui. Quem administra vê tudo.</span></div>
+  ${lin.length?`<div class="tabela"><table><thead><tr><th>PESSOA</th><th>CARGO</th><th>SENHAS LIBERADAS</th><th></th></tr></thead><tbody>${lin.join('')}</tbody></table></div>`
+  :'<div class="vazio">Ninguém além da administração tem acesso ao módulo Acessos. Libere o módulo em Pessoas e acessos, no Saint Center.</div>'}`;
+}
+function editarLib(login){
+  const l = libDe(login);
+  libTemp = {login, setores:new Set(l.setores||[]), pos:new Set(l.pos||[]), comp:new Set(l.comp||[])};
+  desenhaLib();
+}
+const rotuloPos = p => esc(String(p.setor).toUpperCase()) + (p.equipe?' · '+esc(p.equipe):'') + (p.resp?' · '+esc(p.resp):p.status==='vaga'?' · Vaga aberta':'');
+function desenhaLib(){
+  const t = libTemp, pessoa = pessoasSC.find(p=>p.login===t.login) || {nome:t.login};
+  const pos = posicoesOrdenadas().filter(p=>p.status!=='off');
+  const grupos = ordemSetores().map(g=>({g, ps:pos.filter(p=>grupo(p.setor)===g)})).filter(x=>x.ps.length);
+  const bloco = ({g, ps}) => { const todo = t.setores.has(g);
+    return `<div class="senhas-grupo"><label class="ck"><input type="checkbox" ${todo?'checked':''} onchange='libSetor(${js(g)},this.checked)'> <b>${esc(g)}</b>&nbsp;<span class="na">(todas as posições, inclusive as novas)</span></label>
+    ${todo?'':`<div class="sub">${ps.map(p=>`<label class="ck"><input type="checkbox" ${t.pos.has(p.id)?'checked':''} onchange='libItem("pos",${js(p.id)},this.checked)'> ${rotuloPos(p)}</label>`).join('')}</div>`}</div>`; };
+  const plat = S.posicoes.filter(ehCompart);
+  const contas = [...S.compart.map(c=>({k:'comp',id:c.id,nome:c.nome})), ...plat.map(p=>({k:'pos',id:p.id,nome:p.setor+(p.resp?' · '+p.resp:'')+(p.email?' · '+p.email:'')}))];
+  abrir(`<h3>SENHAS LIBERADAS · ${esc(String(pessoa.nome).toUpperCase())}</h3><div class="corpo">
+    <p style="color:var(--g2)">Marque o que ${esc(pessoa.nome)} pode ver e copiar a senha. O que não estiver marcado continua aparecendo, mas com a senha restrita.</p>
+    <div class="sep">POSIÇÕES</div>${grupos.map(bloco).join('')}
+    ${contas.length?`<div class="sep">CONTAS COMPARTILHADAS</div><div class="senhas-grupo">${contas.map(c=>`<label class="ck"><input type="checkbox" ${t[c.k].has(c.id)?'checked':''} onchange='libItem(${js(c.k)},${js(c.id)},this.checked)'> ${esc(c.nome)}</label>`).join('')}</div>`:''}
+  </div><div class="rodape"><button class="btn sec" onclick="libNada()">Desmarcar tudo</button><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvaLib(this)">Salvar</button></div>`);
+}
+function libSetor(g, on){ on ? libTemp.setores.add(g) : libTemp.setores.delete(g);
+  if(on) posTime().filter(p=>grupo(p.setor)===g).forEach(p=>libTemp.pos.delete(p.id)); desenhaLib(); }
+function libItem(k, id, on){ on ? libTemp[k].add(id) : libTemp[k].delete(id); }
+function libNada(){ libTemp.setores.clear(); libTemp.pos.clear(); libTemp.comp.clear(); desenhaLib(); }
+function salvaLib(btn){
+  const t = libTemp, dados = {...S.senhasCfg.dados};
+  const nova = {setores:[...t.setores], pos:[...t.pos], comp:[...t.comp]};
+  if(!nova.setores.length && !nova.pos.length && !nova.comp.length) delete dados[t.login]; else dados[t.login] = nova;
+  const nome = (pessoasSC.find(p=>p.login===t.login)||{}).nome || t.login;
+  salvando(btn, async () => {
+    const r = await run('salvarCompart', {id:S.senhasCfg.id||'', nome:CONFIG_SENHAS, quem:JSON.stringify(dados), email:''},
+      [{acao:'Alterou quem vê senhas', alvo:`${nome}: ${nova.setores.length?nova.setores.join(', '):'nenhum setor inteiro'}${nova.pos.length?` + ${nova.pos.length} posição(ões)`:''}${nova.comp.length?` + ${nova.comp.length} conta(s)`:''}`}]);
+    S.senhasCfg = {id:r.id, dados}; fechar(); render(); toast('Liberação de senhas salva');
+  });
+}
+
 /* ===== Senhas =====
    1º clique num card busca todas as senhas dele de uma vez; os próximos são instantâneos
    e o histórico é gravado em segundo plano (sem esperar). */
@@ -512,6 +640,7 @@ function alvoDe(tipo, id, sis){ if(tipo==='c'){ const c=S.compart.find(x=>x.id==
 let filaLog=[], timerLog=null;
 function logFundo(acao, alvo){ filaLog.push({acao, alvo}); clearTimeout(timerLog); timerLog=setTimeout(()=>{ const l=filaLog; filaLog=[]; call('registrarUso', S.token, l).catch(()=>{}); }, 600); }
 async function pegar(tipo, id, sis, acao){
+  if(!podeVerSenha(tipo, id)) throw new Error('Senha restrita. Peça a liberação para a coordenação.');
   const ck = tipo==='c' ? 'c|'+id : id;
   if(S.cache[ck] && (tipo==='c' || S.cache[ck][sis]!==undefined)){ logFundo(acao, alvoDe(tipo,id,sis)); return tipo==='c' ? S.cache[ck] : S.cache[ck][sis]; }
   const k = tipo==='c' ? 'c|'+id : id+'|'+sis;
@@ -538,20 +667,25 @@ async function copiar(tipo, id, sis){
 
 /* ===== Sistemas ===== */
 function novoSistema(){
-  abrir(`<h3>NOVO SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" placeholder="Ex.: Mercado Livre"></label></div>
+  abrir(`<h3>NOVO SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" placeholder="Ex.: Mercado Livre"></label><label>Link de acesso<input id="sLink" placeholder="Ex.: https://www.jtexpress.com.br"></label></div>
   <div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvarSistema(null,this)">Incluir</button></div>`);
   setTimeout(()=>$('sNome').focus(),50);
 }
 function renomearSistema(id){
   const s = S.sistemas.find(x=>x.id===id);
-  abrir(`<h3>RENOMEAR SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" value="${esc(s.nome)}"></label></div>
+  abrir(`<h3>EDITAR SISTEMA</h3><div class="corpo"><label>Nome do sistema<input id="sNome" value="${esc(s.nome)}"></label><label>Link de acesso<input id="sLink" value="${esc(linkSis(s))}" placeholder="Ex.: https://www.jtexpress.com.br"></label>
+  <p style="color:var(--g2);font-size:12px">O link aparece no nome do sistema em todos os cards. Clicando, abre a página de login.</p></div>
   <div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvarSistema(${js(id)},this)'>Salvar</button></div>`);
 }
 function salvarSistema(id, btn){
   const nome = $('sNome').value.trim(); if(!nome){ toast('Digite o nome do sistema'); return; }
+  const link = normUrl($('sLink') ? $('sLink').value : '');
+  const antes = id ? S.sistemas.find(x=>x.id===id) : null;
   salvando(btn, async () => {
-    const d = await run('sistema', id?'renomear':'novo', {id, nome});
-    aplicar(d); fechar(); render(); toast(id?'Sistema renomeado':`${nome} incluído. Cadastre o acesso em "Editar" de cada posição.`);
+    if(!antes || antes.nome !== nome){ const d = await run('sistema', id?'renomear':'novo', {id, nome}); aplicar(d); }
+    const s = id ? S.sistemas.find(x=>x.id===id) : S.sistemas.find(x=>norm(x.nome)===norm(nome));
+    if(s) await gravaLink('sis', s.id, link, s.nome);
+    fechar(); render(); toast(id?'Sistema salvo':`${nome} incluído. Cadastre o acesso em "Editar" de cada posição.`);
   });
 }
 function incluirPadrao(nome, btn){
@@ -608,7 +742,8 @@ function editar(id){
   const op = (v,l,a) => `<option value="${esc(v)}" ${a===v?'selected':''}>${esc(l)}</option>`;
   const linha = s => { const a=(p.acessos||{})[s.nome]||{t:'vazio'}; return `<div class="lin ${s.ativo?'':'off'}" data-n="${esc(s.nome)}" data-tem="${a.t==='senha'&&a.tem?1:''}"><span>${esc(s.nome)}${s.ativo?'':' (desativado)'}</span>
     <select data-p="${esc(s.nome)}" class="fTipo">${op('vazio','—',a.t)}${op('senha','Senha',a.t)}${op('google','Pelo Google',a.t)}${op('frete','Pelo FreteBarato',a.t)}${op('na','Não se aplica',a.t)}</select>
-    <input data-p="${esc(s.nome)}" class="fVal" type="text" autocomplete="off" placeholder="${a.t==='senha'&&a.tem?'Manter a senha atual':'Senha'}"></div>`; };
+    <input data-p="${esc(s.nome)}" class="fVal" type="text" autocomplete="off" placeholder="${a.t==='senha'&&a.tem?'Manter a senha atual':'Senha'}">
+    <input data-p="${esc(s.nome)}" data-sid="${esc(s.id)}" class="fLink" type="text" autocomplete="off" value="${esc(linkSis(s))}" placeholder="Link de acesso"></div>`; };
   abrir(`<h3>${id?'EDITAR POSIÇÃO':'NOVA POSIÇÃO'}</h3><div class="corpo">
     <label>Setor<select id="fSetorSel" onchange="trocouSetor()"><option value="">Selecione o setor</option>${ordemSetores().map(s=>PADRAO.find(r=>r.setor===s)).filter(Boolean).map(r=>op(r.setor,r.setor,p.setor)).join('')}${p.setor&&!PADRAO.some(r=>r.setor===p.setor)?`<option value="${esc(p.setor)}" selected>${esc(p.setor)}</option>`:''}<option value="__outro">Outro…</option></select></label>
     <label id="fSetorOutro" style="display:none">Nome do setor<input id="fSetor" value="${esc(p.setor)}"></label>
@@ -618,7 +753,7 @@ function editar(id){
     <label>E-mail da posição<input id="fEmail" value="${esc(p.email)}"></label>
     <div class="sep">ACESSOS DO SETOR</div>
     <div class="req" id="reqSetor"></div>
-    <div class="sep">ACESSOS · deixe a senha em branco para manter a atual</div>
+    <div class="sep">ACESSOS · deixe a senha em branco para manter a atual · o link de acesso vale para todas as posições que usam o sistema</div>
     ${sistemasOrdenados().map(linha).join('')}
     ${admin()?'<button class="btn sec min" style="justify-self:start" onclick="fechar();novoSistema()">+ Incluir outro sistema</button>':''}
   </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvar(${js(id||'')},this)'>Salvar</button></div>`);
@@ -673,7 +808,8 @@ function salvar(id, btn){
     p = {setor, equipe, resp: st==='vaga'?'':resp, status:st, email, acessos, trocar:[], histResp:[]};
     logs.push({acao:'Criou posição', alvo:setor});
   }
-  salvando(btn, async () => { await gravarPos(p, logs); fechar(); render(); if(aviso) toast(aviso); });
+  const links = {}; document.querySelectorAll('.fLink').forEach(i => { links[i.dataset.sid] = normUrl(i.value); });
+  salvando(btn, async () => { await gravarPos(p, logs); await gravaLinksSis(links); fechar(); render(); if(aviso) toast(aviso); });
 }
 function checklist(id){
   const p = S.posicoes.find(x=>x.id===id);
@@ -695,13 +831,18 @@ function editarC(id){
     <label>Quem usa<input id="cQuem" value="${esc(c.quem)}"></label>
     <label>E-mail<input id="cEmail" value="${esc(c.email)}"></label>
     <label>Senha<input id="cSenha" autocomplete="off" placeholder="${c.tem?'Manter a senha atual':'Senha'}"></label>
+    <label>Link de acesso<input id="cLink" value="${esc(id?linkComp(c):'')}" placeholder="Ex.: https://trello.com/login"></label>
   </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvarC(${js(id||'')},this)'>Salvar</button></div>`);
 }
 function salvarC(id, btn){
   const c = {id:id||'', nome:$('cNome').value.trim()||'Sem nome', quem:$('cQuem').value.trim(), email:$('cEmail').value.trim()};
   const s = $('cSenha').value; if(s) c.senha = s;
+  const link = normUrl($('cLink').value), antes = id ? S.compart.find(x=>x.id===id) : null;
+  const mudouConta = !antes || s || antes.nome!==c.nome || (antes.quem||'')!==c.quem || (antes.email||'')!==c.email;
   salvando(btn, async () => {
-    const r = await run('salvarCompart', c, [{acao: id?(s?'Alterou senha':'Editou conta'):'Criou conta', alvo:c.nome}]);
+    let r = antes;
+    if(mudouConta) r = await run('salvarCompart', c, [{acao: id?(s?'Alterou senha':'Editou conta'):'Criou conta', alvo:c.nome}]);
+    await gravaLink('comp', r.id, link, c.nome);
     const i = S.compart.findIndex(x=>x.id===r.id); if(i>=0) S.compart[i]=r; else S.compart.push(r);
     delete S.visiveis['c|'+r.id]; delete S.cache['c|'+r.id]; fechar(); render();
   });
@@ -738,6 +879,8 @@ function importar(ev){
     // a importação substitui as contas compartilhadas: mantém o registro da ordem dos setores
     if(S.ordemCfg.ordem.length) comp.push({nome:CONFIG_ORDEM, quem:JSON.stringify(S.ordemCfg.ordem), email:'', senha:''});
     if(Object.keys(S.padraoCfg.dados).length) comp.push({nome:CONFIG_PADRAO, quem:JSON.stringify(S.padraoCfg.dados), email:'', senha:''});
+    comp.push({nome:CONFIG_LINKS, quem:JSON.stringify(S.linksCfg.dados), email:'', senha:''});
+    if(Object.keys(S.senhasCfg.dados).length) comp.push({nome:CONFIG_SENHAS, quem:JSON.stringify(S.senhasCfg.dados), email:'', senha:''});
     abrir(`<h3>IMPORTAR PLANILHA</h3><div class="corpo">
       <p>Encontrei <b>${pos.length}</b> posições e <b>${comp.filter(c=>!ehConfig(c)).length}</b> contas compartilhadas${novosSis.length?` e <b>${novosSis.length}</b> sistema(s) novo(s): ${esc(novosSis.join(', '))}`:''}.</p>
       ${S.posicoes.length||S.compart.length?'<p style="color:var(--g2)">Atenção: a importação substitui as posições e contas que já estão no sistema. Sua planilha original não é alterada.</p>':''}
