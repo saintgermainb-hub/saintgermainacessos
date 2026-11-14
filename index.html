@@ -349,11 +349,16 @@ const SETORES_COMPART = ['mercadolivre','shope','shopee','tiktok','gmail','meta'
 const ehCompart = p => SETORES_COMPART.includes(norm(p.setor));
 const posTime = () => S.posicoes.filter(p=>!ehCompart(p));
 const grupo = setor => regraDe(setor)?.setor || String(setor||'Sem setor').trim();
+// Hierarquia fixa dos cargos: Diretoria › Gerência › Coordenação › Supervisão › Líder (depois, a equipe)
+const CARGOS = [['diretoria','diretor','diretora','diretoria operacional'],['gerencia','gerente','gerencia operacional'],['coordenacao','coordenador','coordenadora'],['supervisao','supervisor','supervisora'],['lider','lideranca','lideres']];
+const rankCargo = s => { const n = norm(s); return CARGOS.findIndex(c => c.some(k => norm(k)===n)); };
 function ordemSetores(){
   const salvos = (S.ordemCfg && S.ordemCfg.ordem) || [];
   const presentes = [...new Set(posTime().map(p=>grupo(p.setor)))];
   const todos = [...new Set([...PADRAO.map(r=>r.setor), ...presentes])];
-  return [...new Set([...salvos.filter(s=>todos.includes(s)), ...todos])];
+  const lista = [...new Set([...salvos.filter(s=>todos.includes(s)), ...todos])];
+  // Cargos sempre no topo e nesta ordem; a equipe vem depois, na ordem escolhida
+  return [...lista.filter(s=>rankCargo(s)>=0).sort((a,b)=>rankCargo(a)-rankCargo(b)), ...lista.filter(s=>rankCargo(s)<0)];
 }
 const posicoesOrdenadas = () => {
   const ordem = ordemSetores(), pos = p => ordem.indexOf(grupo(p.setor));
@@ -453,11 +458,13 @@ function ordemModal(){ ordemTemp = ordemSetores(); desenhaOrdem(); }
 function desenhaOrdem(){
   const n = ordemTemp.length;
   abrir(`<h3>ORDEM DOS SETORES</h3><div class="corpo"><p style="color:var(--g2)">Use as setas para mudar a posição. Ao salvar, a ordem vale para todos que usam o Acessos.</p>
-  <div class="req">${ordemTemp.map((s,i)=>`<div class="r"><span>${i+1}. ${esc(s)}</span><div class="acoes">
-    <button class="ic" title="Subir" ${i?'':'disabled'} onclick="moveSetor(${i},-1)">↑</button><button class="ic" title="Descer" ${i<n-1?'':'disabled'} onclick="moveSetor(${i},1)">↓</button></div></div>`).join('')}</div></div>
+  <div class="req">${ordemTemp.map((s,i)=>{ const fixo = rankCargo(s)>=0, sobe = i>0 && rankCargo(ordemTemp[i-1])<0;
+    return `<div class="r"><span>${i+1}. ${esc(s)}</span><div class="acoes">${fixo?'<span class="na">Cargo · posição fixa</span>':`
+    <button class="ic" title="Subir" ${sobe?'':'disabled'} onclick="moveSetor(${i},-1)">↑</button><button class="ic" title="Descer" ${i<n-1?'':'disabled'} onclick="moveSetor(${i},1)">↓</button>`}</div></div>`; }).join('')}</div>
+  <p style="color:var(--g2);font-size:12px">Os cargos ficam sempre no topo: Diretoria, Gerência, Coordenação, Supervisão e Líder. Depois vem a equipe.</p></div>
   <div class="rodape"><button class="btn sec" onclick="padraoOrdem()">Restaurar padrão</button><span style="flex:1"></span><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick="salvaOrdem(this)">Salvar ordem</button></div>`);
 }
-function moveSetor(i, d){ const j=i+d; if(j<0||j>=ordemTemp.length) return; [ordemTemp[i],ordemTemp[j]]=[ordemTemp[j],ordemTemp[i]]; desenhaOrdem(); }
+function moveSetor(i, d){ const j=i+d; if(j<0||j>=ordemTemp.length||rankCargo(ordemTemp[i])>=0||rankCargo(ordemTemp[j])>=0) return; [ordemTemp[i],ordemTemp[j]]=[ordemTemp[j],ordemTemp[i]]; desenhaOrdem(); }
 function padraoOrdem(){ const s=S.ordemCfg.ordem; S.ordemCfg.ordem=[]; ordemTemp = ordemSetores(); S.ordemCfg.ordem=s; desenhaOrdem(); }
 function salvaOrdem(btn){
   const ordem=[...ordemTemp];
