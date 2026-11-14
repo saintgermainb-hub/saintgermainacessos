@@ -338,7 +338,9 @@ async function gravaLink(tipo, id, url, alvo){
 }
 
 /* ===== Ordem: desativados sempre no final ===== */
-const sistemasOrdenados = () => [...S.sistemas.filter(s=>s.ativo), ...S.sistemas.filter(s=>!s.ativo)];
+// Sistemas em ordem alfabética (ativos primeiro, desativados no final, também em ordem alfabética)
+const porNome = (a,b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR', {sensitivity:'base', numeric:true});
+const sistemasOrdenados = () => [...S.sistemas.filter(s=>s.ativo).sort(porNome), ...S.sistemas.filter(s=>!s.ativo).sort(porNome)];
 /* ===== Ordem dos setores =====
    Setores com o mesmo nome escrito diferente (ex.: "TICKET TRANSPORTE" e "Ticket Transporte") ficam juntos.
    A ordem escolhida em "Ordem dos setores" fica salva no servidor e vale para todos. */
@@ -523,7 +525,7 @@ function listaFaltas(id){
 }
 function renderSistemas(app){
   const faltando = Object.keys(SIS).filter(k=>!achaSis(k) && !achaComp(k));
-  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Sistemas desativados continuam guardados e vão automaticamente para o final da lista.</span><span class="esp"></span>${admin()?'<button class="btn" onclick="novoSistema()">+ Novo sistema</button>':''}</div>
+  app.innerHTML = `<div class="barra"><span style="color:var(--g2)">Sistemas em ordem alfabética. Os desativados continuam guardados e vão automaticamente para o final da lista.</span><span class="esp"></span>${admin()?'<button class="btn" onclick="novoSistema()">+ Novo sistema</button>':''}</div>
   ${admin()&&faltando.length?`<div class="req" style="margin-bottom:20px"><div class="r"><span style="color:var(--g2)">Sistemas do padrão por setor que ainda não estão cadastrados</span></div>${faltando.map(k=>`<div class="r"><span>${esc(SIS[k].nome)}</span><button class="btn sec min" onclick='incluirPadrao(${js(SIS[k].nome)},this)'>Incluir</button></div>`).join('')}</div>`:''}
   <div class="tabela"><table><thead><tr><th>SISTEMA</th><th>LINK DE ACESSO</th><th>SITUAÇÃO</th><th>POSIÇÕES COM ACESSO</th>${admin()?'<th></th>':''}</tr></thead><tbody>
   ${sistemasOrdenados().map(s=>`<tr class="${s.ativo?'':'off'}"><td>${esc(s.nome)}</td><td>${linkSis(s)?comLink(esc(hostDe(linkSis(s))), linkSis(s)):'<span class="na">Sem link</span>'}</td><td>${s.ativo?'<span class="tag ativo">Ativo</span>':'<span class="tag off">Desativado</span>'}</td>
