@@ -77,6 +77,9 @@ ul.plat li.off .nome,ul.plat li.off .senha,ul.plat li.off .via{color:var(--g3)}
 .senha{letter-spacing:.06em;word-break:break-all}
 .senha.oculta{letter-spacing:.2em;color:var(--g3)}
 .via{color:var(--g2);font-size:12px}
+.cred{display:grid;gap:2px;min-width:0}
+.cred .usr{font-size:12px;color:var(--g1);word-break:break-all}
+.cred .usr b{font-weight:400;color:var(--g2);letter-spacing:.06em;font-size:10px;margin-right:4px}
 .na{color:var(--g3);font-size:12px}
 .pendente{text-decoration:line-through;text-decoration-color:var(--g3)}
 .acoes{display:flex;gap:4px;align-items:center}
@@ -99,7 +102,7 @@ tr.off td{color:var(--g3)}
 .corpo label.ck{display:flex;align-items:center;gap:8px;color:var(--preto);font-size:13px}
 .corpo label.ck input{width:auto}
 .corpo input,.corpo select{border:1px solid var(--linha);padding:9px 10px;border-radius:4px;width:100%}
-.lin{display:grid;grid-template-columns:110px 130px 1fr 1fr;gap:8px;align-items:center}
+.lin{display:grid;grid-template-columns:110px 130px 1fr 1fr 1fr;gap:8px;align-items:center}
 .lin.off span{color:var(--g3)}
 .senhas-grupo{border:1px solid var(--linha);border-radius:4px;padding:10px 14px;display:grid;gap:6px}
 .senhas-grupo .sub{display:grid;gap:4px;padding-left:24px}
@@ -388,6 +391,7 @@ function linhaAcesso(p, s){
   const a = (p.acessos||{})[s.nome]; if(!a) return '';
   const chave = p.id+'|'+s.nome, pend = (p.trocar||[]).includes(s.nome);
   let val, bts='';
+  const usr = a.t==='senha' && a.u ? `<span class="usr"><b>USUÁRIO</b>${esc(a.u)}</span>` : '';
   if(a.t==='senha'){
     if(!a.tem) val='<span class="na">Senha não cadastrada</span>';
     else{
@@ -401,6 +405,8 @@ function linhaAcesso(p, s){
   }else if(a.t==='google') val='<span class="via">Acesso pelo Google</span>';
   else if(a.t==='frete') val='<span class="via">Acesso pelo FreteBarato</span>';
   else return ''; // "Não se aplica" não aparece no card
+  if(usr){ val = `<div class="cred">${usr}${val}</div>`;
+    bts = `<button class="ic" title="Copiar usuário" onclick='copiarTexto(${js(a.u)}).then(()=>toast("Usuário copiado"))'>${copia}</button>` + bts; }
   return `<li class="${s.ativo?'':'off'}"><span class="nome">${comLink(esc(s.nome), linkSis(s))}</span>${val}<div class="acoes">${s.ativo?'':'<span class="tag off">Desativado</span>'}${bts}</div></li>`;
 }
 function render(){
@@ -563,6 +569,7 @@ function renderCompart(app){
         bts=`<button class="ic ${car?'girando':''}" title="Mostrar senha" onclick='mostrar("p",${js(p.id)},${js(s.nome)})'>${olho}</button><button class="ic" title="Copiar senha" onclick='copiar("p",${js(p.id)},${js(s.nome)})'>${copia}</button>`; }
       else if(a && a.t==='google') senha='<span class="via">Acesso pelo Google</span>';
       else if(a && a.t==='frete') senha='<span class="via">Acesso pelo FreteBarato</span>';
+      if(a && a.t==='senha' && a.u) senha = `<div class="cred"><span class="usr"><b>USUÁRIO</b>${esc(a.u)}</span>${senha}</div>`;
       return `<tr><td>${comLink(conta, linkSis(s))}</td><td>${esc(p.resp)||'<span class="na">—</span>'}</td><td>${esc(p.email)||'<span class="na">—</span>'}</td><td>${senha}</td>
       <td><div class="acoes">${bts}<button class="ic" title="Editar" onclick='editar(${js(p.id)})'>${lapis}</button></div></td></tr>`;
     };
@@ -760,6 +767,7 @@ function editar(id){
   const op = (v,l,a) => `<option value="${esc(v)}" ${a===v?'selected':''}>${esc(l)}</option>`;
   const linha = s => { const a=(p.acessos||{})[s.nome]||{t:'vazio'}; return `<div class="lin ${s.ativo?'':'off'}" data-n="${esc(s.nome)}" data-tem="${a.t==='senha'&&a.tem?1:''}"><span>${esc(s.nome)}${s.ativo?'':' (desativado)'}</span>
     <select data-p="${esc(s.nome)}" class="fTipo">${op('vazio','—',a.t)}${op('senha','Senha',a.t)}${op('google','Pelo Google',a.t)}${op('frete','Pelo FreteBarato',a.t)}${op('na','Não se aplica',a.t)}</select>
+    <input data-p="${esc(s.nome)}" class="fUser" type="text" autocomplete="off" value="${esc(a.u||'')}" placeholder="Usuário">
     <input data-p="${esc(s.nome)}" class="fVal" type="text" autocomplete="off" placeholder="${a.t==='senha'&&a.tem?'Manter a senha atual':'Senha'}">
     <input data-p="${esc(s.nome)}" data-sid="${esc(s.id)}" class="fLink" type="text" autocomplete="off" value="${esc(linkSis(s))}" placeholder="Link de acesso"></div>`; };
   abrir(`<h3>${id?'EDITAR POSIÇÃO':'NOVA POSIÇÃO'}</h3><div class="corpo">
@@ -771,7 +779,7 @@ function editar(id){
     <label>E-mail da posição<input id="fEmail" value="${esc(p.email)}"></label>
     <div class="sep">ACESSOS DO SETOR</div>
     <div class="req" id="reqSetor"></div>
-    <div class="sep">ACESSOS · deixe a senha em branco para manter a atual · o link de acesso vale para todas as posições que usam o sistema</div>
+    <div class="sep">ACESSOS · informe o usuário de login quando o sistema pedir (ex.: J&amp;T) · deixe a senha em branco para manter a atual · o link de acesso vale para todas as posições que usam o sistema</div>
     ${sistemasOrdenados().map(linha).join('')}
     ${admin()?'<button class="btn sec min" style="justify-self:start" onclick="fechar();novoSistema()">+ Incluir outro sistema</button>':''}
   </div><div class="rodape"><button class="btn sec" onclick="fechar()">Cancelar</button><button class="btn" onclick='salvar(${js(id||'')},this)'>Salvar</button></div>`);
@@ -812,7 +820,8 @@ function salvar(id, btn){
   const acessos={}, trocadas=[];
   document.querySelectorAll('.fTipo').forEach(s => { const n=s.dataset.p, t=s.value; if(t==='vazio') return;
     const v=[...document.querySelectorAll('.fVal')].find(i=>i.dataset.p===n).value;
-    if(t==='senha'){ acessos[n] = v ? {t, v} : {t}; if(v) trocadas.push(n); } else acessos[n]={t}; });
+    const u=([...document.querySelectorAll('.fUser')].find(i=>i.dataset.p===n)||{value:''}).value.trim();
+    if(t==='senha'){ acessos[n] = v ? {t, v} : {t}; if(u) acessos[n].u = u; if(v) trocadas.push(n); } else acessos[n]={t}; });
   const setor=$('fSetor').value.trim()||'Sem setor', st=$('fStatus').value, resp=$('fResp').value.trim(), email=$('fEmail').value.trim(), equipe=$('fEquipe').value, logs=[];
   let p, aviso='';
   if(id){
